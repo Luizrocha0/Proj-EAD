@@ -1,0 +1,65 @@
+{
+  "descricao": "Resultados esperados para validação de equivalência C/Java na U1",
+  "lista_estoque": {
+    "apos_inserir_5_bolsas": {
+      "tamanho": 5,
+      "ordem_ids_da_cabeca_para_cauda": [
+        "BOLSA-005", "BOLSA-004", "BOLSA-003", "BOLSA-002", "BOLSA-001"
+      ],
+      "justificativa": "Inserção no início — última inserida fica na cabeça"
+    },
+    "consulta_existente": {
+      "entrada": "BOLSA-003",
+      "encontrado": true,
+      "tipoSanguineo": "B+",
+      "doador": "Carlos Oliveira"
+    },
+    "consulta_inexistente": {
+      "entrada": "BOLSA-999",
+      "encontrado": false
+    },
+    "remocao_cabeca": {
+      "id_removido": "BOLSA-005",
+      "tamanho_apos": 4
+    },
+    "remocao_meio": {
+      "id_removido": "BOLSA-003",
+      "tamanho_apos": 3
+    },
+    "remocao_cauda": {
+      "id_removido": "BOLSA-001",
+      "tamanho_apos": 2
+    },
+    "remocao_inexistente": {
+      "id_removido": "BOLSA-999",
+      "retorno": false,
+      "tamanho_inalterado": 2
+    }
+  },
+  "fila_requisicoes": {
+    "apos_enfileirar_5_requisicoes": {
+      "tamanho": 5,
+      "ordem_fifo": [
+        "REQ-001", "REQ-002", "REQ-003", "REQ-004", "REQ-005"
+      ],
+      "justificativa": "FIFO — primeira enfileirada sai primeiro"
+    },
+    "primeiro_desenfileiramento": {
+      "id_removido": "REQ-001",
+      "hospital": "HOSP-CENTRAL",
+      "tamanho_apos": 4
+    },
+    "segundo_desenfileiramento": {
+      "id_removido": "REQ-002",
+      "hospital": "HOSP-NORTE",
+      "tamanho_apos": 3
+    },
+    "espiar_sem_remover": {
+      "id_esperado": "REQ-003",
+      "tamanho_inalterado": 3
+    },
+    "desenfileirar_fila_vazia": {
+      "retorno": "vazio/empty/NULL"
+    }
+  }
+}

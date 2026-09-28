@@ -1,0 +1,198 @@
+name: CI — Rota Vital
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Estruturas AED em C (com sanitizers)
+  # ─────────────────────────────────────────────
+  test-c:
+    name: "AED C — GCC + AddressSanitizer"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar GCC
+        run: sudo apt-get install -y gcc make
+
+      - name: Compilar e testar C (AddressSanitizer + UBSan)
+        working-directory: aed-c
+        run: make test
+        env:
+          CFLAGS: "-Wall -Wextra -std=c11 -fsanitize=address,undefined"
+          LDFLAGS: "-fsanitize=address,undefined"
+
+      - name: Verificar sem vazamentos de memória
+        working-directory: aed-c
+        run: |
+          echo "✅ Testes C finalizados sem erros de memória"
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Testes Java com Maven
+  # ─────────────────────────────────────────────
+  test-java:
+    name: "Java 21 — Maven + JUnit 5"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Executar testes
+        run: ./mvnw test --no-transfer-progress
+
+      - name: Publicar relatório de testes
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # JOB 3: Build Maven (JAR)
+  # ─────────────────────────────────────────────
+  build-java:
+    name: "Build Maven — JAR"
+    runs-on: ubuntu-latest
+    needs: test-java
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build (skip tests)
+        run: ./mvnw package -DskipTests --no-transfer-progress
+
+      - name: Guardar JAR como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: rota-vital-jar
+          path: target/*.jar
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # JOB 4: Build Docker Image
+  # ─────────────────────────────────────────────
+  build-docker:
+    name: "Docker — Build da imagem"
+    runs-on: ubuntu-latest
+    needs: [test-c, build-java]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Baixar JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: rota-vital-jar
+          path: target/
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build da imagem Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: rota-vital:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────
+  # JOB 5: Verificação de saúde (health check)
+  # ─────────────────────────────────────────────
+  health-check:
+    name: "Health Check — Actuator"
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Baixar JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: rota-vital-jar
+          path: target/
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Iniciar aplicação e verificar saúde
+        run: |
+          JAR=$(ls target/*.jar | head -1)
+          java -jar "$JAR" --server.port=8080 &
+          APP_PID=$!
+          echo "Aguardando aplicação iniciar..."
+          sleep 20
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health || echo "000")
+          kill $APP_PID 2>/dev/null || true
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Health check OK — status $STATUS"
+          else
+            echo "❌ Health check FALHOU — status $STATUS"
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────
+  # JOB 6: Deploy no Render (apenas na main)
+  # ─────────────────────────────────────────────
+  deploy-render:
+    name: "Deploy — Render.com"
+    runs-on: ubuntu-latest
+    needs: health-check
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Triggar deploy no Render
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Deploy disparado no Render"
+          else
+            echo "⚠️  RENDER_DEPLOY_HOOK_URL não configurado — pule esse passo e configure no GitHub Secrets"
+          fi
+
+      - name: Aguardar e verificar URL pública
+        run: |
+          if [ -n "${{ secrets.RENDER_APP_URL }}" ]; then
+            echo "Aguardando Render iniciar a instância..."
+            sleep 30
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
+            else
+              echo "⚠️  Aplicação respondeu com status $STATUS (pode ainda estar iniciando)"
+            fi
+          else
+            echo "ℹ️  RENDER_APP_URL não configurado"
+          fi

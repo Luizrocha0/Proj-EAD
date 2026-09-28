@@ -1,0 +1,42 @@
+[
+  {
+    "id": "BOLSA-001",
+    "tipoSanguineo": "O+",
+    "volumeMl": 450.0,
+    "dataColeta": "2026-09-01",
+    "validade": "2026-11-01",
+    "doador": "João Silva"
+  },
+  {
+    "id": "BOLSA-002",
+    "tipoSanguineo": "A-",
+    "volumeMl": 450.0,
+    "dataColeta": "2026-09-05",
+    "validade": "2026-11-05",
+    "doador": "Maria Santos"
+  },
+  {
+    "id": "BOLSA-003",
+    "tipoSanguineo": "B+",
+    "volumeMl": 400.0,
+    "dataColeta": "2026-09-10",
+    "validade": "2026-11-10",
+    "doador": "Carlos Oliveira"
+  },
+  {
+    "id": "BOLSA-004",
+    "tipoSanguineo": "AB+",
+    "volumeMl": 450.0,
+    "dataColeta": "2026-08-15",
+    "validade": "2026-10-15",
+    "doador": "Ana Costa"
+  },
+  {
+    "id": "BOLSA-005",
+    "tipoSanguineo": "O-",
+    "volumeMl": 500.0,
+    "dataColeta": "2026-09-20",
+    "validade": "2026-11-20",
+    "doador": "Pedro Almeida"
+  }
+]

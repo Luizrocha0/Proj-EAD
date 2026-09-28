@@ -1,0 +1,39 @@
+# ─── .gitignore — Rota Vital ───
+
+# ── Java / Maven ──
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# ── IDE ──
+.idea/
+*.iml
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── C ──
+aed-c/tests/test_lista
+aed-c/tests/test_fila
+aed-c/tests/*.exe
+*.o
+*.obj
+*.dSYM/
+
+# ── Outros ──
+*.bak
+*.tmp

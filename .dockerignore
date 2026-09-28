@@ -1,0 +1,31 @@
+# Build
+target/
+!target/*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docs e benchmarks (não vão para a imagem)
+docs/
+bench/
+fixtures/
+aed-c/
+
+# Agentes
+.agents/
+
+# Logs
+*.log
