@@ -1,0 +1,37 @@
+[
+  {
+    "id": "REQ-001",
+    "hospitalId": "HOSP-CENTRAL",
+    "tipoSanguineo": "O+",
+    "quantidadeBolsas": 2,
+    "prioridade": "EMERGENCIA"
+  },
+  {
+    "id": "REQ-002",
+    "hospitalId": "HOSP-NORTE",
+    "tipoSanguineo": "A-",
+    "quantidadeBolsas": 1,
+    "prioridade": "URGENTE"
+  },
+  {
+    "id": "REQ-003",
+    "hospitalId": "HOSP-SUL",
+    "tipoSanguineo": "B+",
+    "quantidadeBolsas": 3,
+    "prioridade": "NORMAL"
+  },
+  {
+    "id": "REQ-004",
+    "hospitalId": "HOSP-LESTE",
+    "tipoSanguineo": "AB+",
+    "quantidadeBolsas": 1,
+    "prioridade": "URGENTE"
+  },
+  {
+    "id": "REQ-005",
+    "hospitalId": "HOSP-OESTE",
+    "tipoSanguineo": "O-",
+    "quantidadeBolsas": 4,
+    "prioridade": "EMERGENCIA"
+  }
+]
