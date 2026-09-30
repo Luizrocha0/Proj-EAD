@@ -1,0 +1,20 @@
+# ─── Render Blueprint — Deploy automático ───
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Para fazer o deploy:
+# 1. Acesse https://dashboard.render.com/select-repo?type=blueprint
+# 2. Conecte o repositório Luizrocha0/Proj-EAD
+# 3. Clique em "Apply" — o Render cria tudo automaticamente
+
+services:
+  - type: web
+    name: rota-vital
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: JAVA_OPTS
+        value: -Xmx256m
