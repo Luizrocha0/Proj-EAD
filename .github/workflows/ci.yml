@@ -52,7 +52,9 @@ jobs:
           cache: 'maven'
 
       - name: Executar testes
-        run: ./mvnw test --no-transfer-progress
+        run: |
+          chmod +x mvnw
+          ./mvnw test --no-transfer-progress
 
       - name: Publicar relatório de testes
         uses: actions/upload-artifact@v4
@@ -82,7 +84,9 @@ jobs:
           cache: 'maven'
 
       - name: Build (skip tests)
-        run: ./mvnw package -DskipTests --no-transfer-progress
+        run: |
+          chmod +x mvnw
+          ./mvnw package -DskipTests --no-transfer-progress
 
       - name: Guardar JAR como artefato
         uses: actions/upload-artifact@v4
