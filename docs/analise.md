@@ -1,0 +1,9 @@
+# Análise
+
+O ganho não foi linear: com 8 threads o speedup ficou em ~3.7x, não 8x, em todos os tamanhos testados. A causa é o particionamento por índice `i` — cada thread recebe uma fatia igual de valores de `i`, mas o trabalho por `i` é `O(n-i)`, então a thread que pega os primeiros índices compara contra quase todo o vetor, e a que pega os últimos quase não trabalha. A carga fica desbalanceada mesmo com fatias de tamanho igual, e o overhead de criar o pool e agregar `Future`s pesa mais em `n` pequeno (por isso o speedup melhora um pouco com `n` maior).
+
+A Big-O não muda: a versão paralela continua O(n²) em trabalho total, threads não reduzem o número de comparações, só distribuem esse mesmo total entre núcleos. Muda o tempo de parede, dividido por um fator menor que o número de threads.
+
+Na Mesa DJ as threads atendiam eventos concorrentes — entradas independentes (teclado, MIDI, áudio) intercaladas sem bloquear umas às outras; é concorrência. Aqui é paralelismo: uma única tarefa CPU-bound é fatiada e as fatias rodam literalmente ao mesmo tempo em núcleos distintos, para reduzir o tempo total de uma computação, não para responder a eventos.
+
+Quando nem 8 threads bastarem — em 1 milhão de registros, mesmo com paralelismo perfeito, ainda seriam dezenas de horas (`docs/medicoes.md`) — threads numa única máquina deixam de bastar. Próximos passos de arquitetura: trocar o algoritmo O(n²) por um sub-quadrático (blocking/LSH, comparando só candidatos com prefixo/hash semelhante); escalar horizontalmente entre múltiplas instâncias (map-reduce, filas); e mover o processamento pesado para um serviço assíncrono, com resultado consultado depois em vez de bloquear a requisição HTTP. É o gancho da Unidade 2: threads resolvem paralelismo numa máquina, escalar além disso é arquitetura distribuída.

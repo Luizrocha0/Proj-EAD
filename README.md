@@ -179,6 +179,34 @@ curl -X POST http://localhost:8080/api/requisicoes \
 | `GET` | `/actuator/health` | Status da aplicação |
 | `GET` | `/actuator/info` | Informações do projeto |
 
+### Detecção de Duplicatas (Paralelismo)
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/api/duplicates/detect` | Encontra requisições duplicadas (fuzzy matching) |
+
+**Exemplo — Testar com 8000 registros em 8 threads (platform):**
+
+```bash
+curl "http://localhost:8080/api/duplicates/detect?size=8000&threads=8&mode=platform"
+```
+
+---
+
+## Benchmark de Paralelismo (Threads)
+
+A operação de detecção de duplicatas (algoritmo _fuzzy_ usando distância de Levenshtein) foi o gargalo CPU-bound identificado. Com 8000 registros, o algoritmo O(n²) realiza milhões de comparações:
+
+| Modo | Tempo (ms) | Speedup (vs 1 thread) |
+|---|---|---|
+| 1 thread (sequencial) | 23.017 | 1.00x |
+| 2 threads | 17.486 | 1.32x |
+| 4 threads | 10.737 | 2.14x |
+| 8 threads | 6.194 | 3.72x |
+| 8 virtual threads | 6.343 | 3.63x |
+
+> Os detalhes completos do relatório de paralelização, o gráfico de análise de speedup e a base analítica com arquivo `.csv` estão localizados em `docs/threads/` e `bench/`.
+
 ---
 
 ## Deploy
