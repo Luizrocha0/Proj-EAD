@@ -6,6 +6,9 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
+# Corrigir permissão do Maven Wrapper (Windows → Linux)
+RUN chmod +x mvnw
+
 # Baixa dependências antes (cache de camada)
 RUN ./mvnw dependency:go-offline -q
 
