@@ -27,7 +27,8 @@ O Rota Vital simula a gestão de um banco de sangue com:
 
 - **Lista encadeada de estoque** — bolsas armazenadas em lista simplesmente encadeada com nós próprios
 - **Fila FIFO de requisições** — requisições emergenciais atendidas por ordem de chegada
-- **Equivalência C ↔ Java** — mesma lógica implementada nas duas linguagens com mesmas fixtures e mesmos resultados
+- **Pilha (LIFO)** — não foi implementada pois não existe histórico de operações no escopo atual.
+- **Equivalência C ↔ Java** — mesma lógica implementada nas duas linguagens reproduzindo os mesmos dados sintéticos diretamente no código para testes (foram aprovados 48 testes Java, 23 testes C da lista e 31 testes C da fila).
 - **API REST** — endpoints Spring Boot que consomem as estruturas AED reais
 - **CI/CD** — GitHub Actions com testes C (AddressSanitizer), testes Java, Docker build e deploy
 
@@ -94,13 +95,13 @@ make clean
   OK: Lista recem-criada tem tamanho 0
   OK: Consulta em lista vazia retorna NULL
   ...
-=== Resultado: 18/18 testes passaram ===
+=== Resultado: 23/23 testes passaram ===
 SUCESSO: Todos os testes passaram sem erros de memoria!
 
 === Testes da Fila FIFO (AED U1 — C) ===
   OK: Fila recem-criada tem tamanho 0
   ...
-=== Resultado: 22/22 testes passaram ===
+=== Resultado: 31/31 testes passaram ===
 SUCESSO: Todos os testes passaram sem erros de memoria!
 ```
 
@@ -241,6 +242,8 @@ Para deploy no Render, configure os secrets no GitHub:
 
 - `RENDER_DEPLOY_HOOK_URL` — URL do deploy hook do Render
 - `RENDER_APP_URL` — URL pública da aplicação
+
+**URL Pública (Produção):** [https://rota-vital.onrender.com](https://rota-vital.onrender.com) (ou a URL configurada)
 
 ---
 

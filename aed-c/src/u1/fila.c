@@ -100,6 +100,27 @@ int fila_desenfileirar(Fila *f, Requisicao *out) {
 }
 
 /**
+ * Espia a requisição do início da fila (sem remover).
+ *
+ * Java equivalente (FilaRequisicoes.espiar):
+ *   if (cabeca == null) return Optional.empty();
+ *   return Optional.of(cabeca.dado);
+ *
+ * Complexidade: O(1)
+ *
+ * @param fila ponteiro para a fila
+ * @param out ponteiro onde o dado será copiado (se fila não vazia)
+ * @return 1 se conseguiu consultar, 0 se fila vazia
+ */
+int fila_espiar(const Fila *fila, Requisicao *out) {
+    if (fila->cabeca == NULL) {
+        return 0;
+    }
+    *out = fila->cabeca->requisicao;
+    return 1;
+}
+
+/**
  * Libera toda a memória da fila.
  * Em Java, o garbage collector faria isso automaticamente.
  * Em C, percorre cada nó e libera com free().

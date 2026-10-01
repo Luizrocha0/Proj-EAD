@@ -55,6 +55,16 @@ void fila_enfileirar(Fila *f, Requisicao r);
 int fila_desenfileirar(Fila *f, Requisicao *out);
 
 /**
+ * Espia a requisição do início da fila (sem remover).
+ * Equivalente Java: FilaRequisicoes.espiar()
+ *
+ * @param fila ponteiro para a fila
+ * @param out ponteiro onde o dado será copiado (se fila não vazia)
+ * @return 1 se conseguiu consultar, 0 se fila vazia
+ */
+int fila_espiar(const Fila *fila, Requisicao *out);
+
+/**
  * Libera toda a memória da fila (todos os nós + struct Fila).
  * Equivalente Java: garbage collector
  */
