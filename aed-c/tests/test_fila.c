@@ -149,6 +149,30 @@ void test_reuso(void) {
     fila_liberar(f);
 }
 
+void test_espiar(void) {
+    printf("\n[Espiar fila]\n");
+    Fila *f = fila_criar();
+    Requisicao out;
+
+    /* Teste com fila vazia */
+    ASSERT_MSG(fila_espiar(f, &out) == 0, "Espiar fila vazia retorna 0");
+
+    /* Teste consultando o primeiro elemento */
+    fila_enfileirar(f, criar_requisicao("REQ-001", "HOSP-CENTRAL", "O+", 2, EMERGENCIA));
+    fila_enfileirar(f, criar_requisicao("REQ-002", "HOSP-NORTE",   "A-", 1, URGENTE));
+    
+    ASSERT_MSG(fila_espiar(f, &out) == 1, "Espiar com elementos retorna 1");
+    ASSERT_MSG(strcmp(out.id, "REQ-001") == 0, "Elemento espiado eh o primeiro enfileirado (REQ-001)");
+    
+    /* Confirmacao de que consultar nao altera o tamanho */
+    ASSERT_MSG(f->tamanho == 2, "Tamanho apos espiar continua sendo 2 (nao removeu)");
+    
+    /* Confirmar se a fila continua igual */
+    ASSERT_MSG(strcmp(f->cabeca->requisicao.id, "REQ-001") == 0, "Cabeca continua sendo REQ-001");
+
+    fila_liberar(f);
+}
+
 int main(void) {
     printf("=== Testes da Fila FIFO (AED U1 — C) ===\n");
 
@@ -156,6 +180,7 @@ int main(void) {
     test_enfileiramento();
     test_desenfileiramento();
     test_reuso();
+    test_espiar();
 
     printf("\n=== Resultado: %d/%d testes passaram ===\n", testes_passaram, testes_total);
 

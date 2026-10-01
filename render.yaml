@@ -13,7 +13,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     branch: main
-    autoDeploy: true
+    autoDeploy: false
     healthCheckPath: /actuator/health
     envVars:
       - key: JAVA_OPTS

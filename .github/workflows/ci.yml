@@ -179,24 +179,25 @@ jobs:
     steps:
       - name: Triggar deploy no Render
         run: |
-          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-            echo "✅ Deploy disparado no Render"
-          else
-            echo "⚠️  RENDER_DEPLOY_HOOK_URL não configurado — pule esse passo e configure no GitHub Secrets"
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "❌ RENDER_DEPLOY_HOOK_URL não configurado."
+            exit 1
           fi
+          curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          echo "✅ Deploy disparado no Render"
 
       - name: Aguardar e verificar URL pública
         run: |
-          if [ -n "${{ secrets.RENDER_APP_URL }}" ]; then
-            echo "Aguardando Render iniciar a instância..."
-            sleep 30
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
-            else
-              echo "⚠️  Aplicação respondeu com status $STATUS (pode ainda estar iniciando)"
-            fi
+          if [ -z "${{ secrets.RENDER_APP_URL }}" ]; then
+            echo "❌ RENDER_APP_URL não configurado."
+            exit 1
+          fi
+          echo "Aguardando Render iniciar a instância..."
+          sleep 30
+          STATUS=$(curl --fail -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
           else
-            echo "ℹ️  RENDER_APP_URL não configurado"
+            echo "❌ Aplicação não respondeu corretamente. Status: $STATUS"
+            exit 1
           fi
