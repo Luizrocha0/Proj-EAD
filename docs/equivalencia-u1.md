@@ -281,6 +281,27 @@ public Optional<Requisicao> desenfileirar() {
 - C exige `free()` explícito; Java delega ao garbage collector.
 - **A lógica FIFO e o tratamento de cauda quando a fila esvazia são idênticos.**
 
+### 2.5 Espiar (sem remover)
+
+```c
+// C — fila_espiar()
+int fila_espiar(const Fila *f, Requisicao *out) {
+    if (f->cabeca == NULL) return 0;
+    *out = f->cabeca->requisicao;       // apenas copia o dado
+    return 1;                           // não mexe nos ponteiros
+}
+```
+
+```java
+// Java — espiar()
+public Optional<Requisicao> espiar() {
+    if (cabeca == null) return Optional.empty();
+    return Optional.of(cabeca.dado);    // retorna o dado sem alterar ponteiros
+}
+```
+
+**Ambas as implementações:** consultam o primeiro elemento (cabeça) sem removê-lo, preservam a ordem atual e o tamanho da fila, e executam em **O(1)**.
+
 ---
 
 ## 3. Resumo de Complexidade
@@ -289,7 +310,7 @@ public Optional<Requisicao> desenfileirar() {
 |---|---|---|
 | Criar | O(1) | O(1) |
 | Inserir/Enfileirar | O(1) | O(1) |
-| Consultar | O(n) | — |
+| Consultar/Espiar | O(n) | O(1) |
 | Remover/Desenfileirar | O(n) / O(1)* | O(1) |
 | Liberar | O(n) | O(n) |
 
