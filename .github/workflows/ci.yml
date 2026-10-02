@@ -192,12 +192,18 @@ jobs:
             echo "❌ RENDER_APP_URL não configurado."
             exit 1
           fi
-          echo "Aguardando Render iniciar a instância..."
-          sleep 30
-          STATUS=$(curl --fail -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
-          else
-            echo "❌ Aplicação não respondeu corretamente. Status: $STATUS"
-            exit 1
-          fi
+          echo "Aguardando Render iniciar a instância (limite de 5 minutos)..."
+          MAX_RETRIES=30
+          INTERVAL=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATUS=$(curl --fail -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
+              exit 0
+            fi
+            echo "Tentativa $i falhou. Aguardando $INTERVAL segundos..."
+            sleep $INTERVAL
+          done
+          echo "❌ Tempo limite excedido. Aplicação não respondeu corretamente."
+          exit 1
+

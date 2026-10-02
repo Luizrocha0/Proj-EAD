@@ -28,7 +28,7 @@ O Rota Vital simula a gestão de um banco de sangue com:
 - **Lista encadeada de estoque** — bolsas armazenadas em lista simplesmente encadeada com nós próprios
 - **Fila FIFO de requisições** — requisições emergenciais atendidas por ordem de chegada
 - **Pilha (LIFO)** — não foi implementada pois não existe histórico de operações no escopo atual.
-- **Equivalência C ↔ Java** — mesma lógica implementada nas duas linguagens reproduzindo os mesmos dados sintéticos diretamente no código para testes (foram aprovados 48 testes Java, 23 testes C da lista e 31 testes C da fila).
+- **Equivalência C ↔ Java** — mesma lógica implementada nas duas linguagens, reproduzindo os valores das fixtures (JSONs sintéticos) embutidos diretamente no código para testes (foram aprovados 27 testes Java, 19 testes C da lista e 29 testes C da fila).
 - **API REST** — endpoints Spring Boot que consomem as estruturas AED reais
 - **CI/CD** — GitHub Actions com testes C (AddressSanitizer), testes Java, Docker build e deploy
 
@@ -95,13 +95,13 @@ make clean
   OK: Lista recem-criada tem tamanho 0
   OK: Consulta em lista vazia retorna NULL
   ...
-=== Resultado: 23/23 testes passaram ===
+=== Resultado: 19/19 testes passaram ===
 SUCESSO: Todos os testes passaram sem erros de memoria!
 
 === Testes da Fila FIFO (AED U1 — C) ===
   OK: Fila recem-criada tem tamanho 0
   ...
-=== Resultado: 31/31 testes passaram ===
+=== Resultado: 29/29 testes passaram ===
 SUCESSO: Todos os testes passaram sem erros de memoria!
 ```
 
@@ -198,15 +198,23 @@ curl "http://localhost:8080/api/duplicates/detect?size=8000&threads=8&mode=platf
 
 A operação de detecção de duplicatas (algoritmo _fuzzy_ usando distância de Levenshtein) foi o gargalo CPU-bound identificado. Com 8000 registros, o algoritmo O(n²) realiza milhões de comparações:
 
-| Modo | Tempo (ms) | Speedup (vs 1 thread) |
-|---|---|---|
-| 1 thread (sequencial) | 23.017 | 1.00x |
-| 2 threads | 17.486 | 1.32x |
-| 4 threads | 10.737 | 2.14x |
-| 8 threads | 6.194 | 3.72x |
-| 8 virtual threads | 6.343 | 3.63x |
+O ambiente de execução e a coleta seguiram o seguinte método rigoroso:
+- **Aquecimento (Warmup):** Realizada 1 execução prévia para descartar tempos de inicialização e compilação JIT da JVM.
+- **Repetições e Agregação:** 5 repetições para cada configuração (1, 2, 4 e 8 threads). O PowerShell extraiu da resposta JSON o `processingTimeMs` real (descartando a latência da rede HTTP) e calculou as médias agregadas para o speedup.
+- **Validação:** Todas as variações e threads encontraram exatamente o mesmo número de duplicatas. Erros HTTP e divergências abortariam o benchmark.
 
-> Os detalhes completos do relatório de paralelização, o gráfico de análise de speedup e a base analítica com arquivo `.csv` estão localizados em `docs/threads/` e `bench/`.
+| Tamanho (n) | Threads | Tempo Médio (ms) | Speedup |
+|---|---|---|---|
+| 8000 | 1 | 9149.00 | 1.00x |
+| 8000 | 2 | 6891.80 | 1.33x |
+| 8000 | 4 | 4291.20 | 2.13x |
+| 8000 | 8 | 2716.20 | 3.37x |
+| 16000 | 1 | 36479.60 | 1.00x |
+| 16000 | 2 | 27703.40 | 1.32x |
+| 16000 | 4 | 16565.00 | 2.20x |
+| 16000 | 8 | 10010.80 | 3.64x |
+
+> Os detalhes completos do relatório de paralelização, o gráfico gerado `bench/speedup.png` e os dados brutos e agregados `.csv` estão localizados em `docs/threads/` e `bench/`.
 
 ---
 
