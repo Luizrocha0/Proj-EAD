@@ -1,9 +1,1 @@
-﻿size,mode,threads,avgProcessingTimeMs,speedup
-8000,platform,1,9149,1
-8000,platform,2,6891.8,1.32751966104646
-8000,platform,4,4291.2,2.13203765846383
-8000,platform,8,2716.2,3.3683086665194
-16000,platform,1,36479.6,1
-16000,platform,2,27703.4,1.31679144076178
-16000,platform,4,16565,2.20220947781467
-16000,platform,8,10010.8,3.64402445359012
+﻿size,mode,threads,avgResponseTimeMs,speedup
