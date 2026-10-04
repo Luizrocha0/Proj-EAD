@@ -20,7 +20,7 @@ Para `n` registros de tamanho médio `L`:
 - Cada comparação roda Levenshtein, que é O(L²) no pior caso (aqui `L` é pequeno e roughly constante — nomes de medicamento — então o termo dominante na prática é o O(n²) de pares).
 - Custo total: **O(n² · L²)**, dominado por O(n²) para `L` fixo.
 
-Confirmado empiricamente (`bench/measurements.csv`, sequencial): dobrar `n` quadruplica o tempo (1000→362ms, 2000→1494ms, 4000→5842ms, 8000→23017ms — fator ~4x a cada duplicação de `n`, exatamente O(n²)).
+Confirmado empiricamente (`bench/measurements.csv`): dobrar `n` quadruplica o tempo. Por exemplo, na **série histórica (medida em hardware base)**: 1000→362ms, 2000→1494ms, 4000→5842ms, 8000→23017ms — fator ~4x a cada duplicação de `n`, exatamente O(n²). Nas medições atuais, o padrão O(n²) se mantém (ex: 8000→9149ms, 16000→36479ms).
 
 ## Onde está o gargalo
 

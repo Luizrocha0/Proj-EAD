@@ -21,7 +21,7 @@ for r in rows:
     if r["mode"] == "platform":
         s = int(r["size"])
         t = int(r["threads"])
-        platform[s][t] = float(r["avgProcessingTimeMs"])
+        platform[s][t] = float(r["avgResponseTimeMs"])
         speedup_map[s][t] = float(r["speedup"])
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -32,7 +32,7 @@ for s in sizes:
     ax1.plot(threads, times, marker="o", label=f"n={s}")
 
 ax1.set_xlabel("Threads")
-ax1.set_ylabel("Tempo médio de processamento (ms)")
+ax1.set_ylabel("Tempo médio de resposta HTTP (ms)")
 ax1.set_title("Tempo vs threads")
 ax1.set_xticks([1, 2, 4, 8])
 ax1.legend()

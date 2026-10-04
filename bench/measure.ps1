@@ -13,7 +13,7 @@ $rawCsv = Join-Path $scriptDir "measurements.csv"
 $aggCsv = Join-Path $scriptDir "measurements_agg.csv"
 
 "size,mode,threads,run,responseTimeMs,processingTimeMs,duplicatesFound,status" | Out-File $rawCsv -Encoding utf8
-"size,mode,threads,avgProcessingTimeMs,speedup" | Out-File $aggCsv -Encoding utf8
+"size,mode,threads,avgResponseTimeMs,speedup" | Out-File $aggCsv -Encoding utf8
 
 $threadsList = @(1, 2, 4, 8)
 $mode = "platform"
@@ -79,9 +79,9 @@ foreach ($size in $sizes) {
                 exit 1
             }
 
-            "${size},${mode},${threads},${i},${responseTimeMs},${procTime},${count},${result.status}" | Out-File $rawCsv -Append -Encoding utf8
+            "${size},${mode},${threads},${i},${responseTimeMs},${procTime},${count},$($result.status)" | Out-File $rawCsv -Append -Encoding utf8
             
-            $times += $procTime
+            $times += $responseTimeMs
         }
 
         # Calcular média
@@ -109,7 +109,8 @@ foreach ($size in $sizes) {
 }
 
 Write-Host "`nAnálise Agregada:"
-$aggregatedData | Format-Table -Property Size, Mode, Threads, @{Name="AvgProcess(ms)";Expression={[math]::Round($_.Avg, 2)}}, @{Name="Speedup";Expression={[math]::Round($_.Speedup, 2)}}
+$aggregatedData | Format-Table -Property Size, Mode, Threads, @{Name="AvgResponse(ms)";Expression={[math]::Round($_.Avg, 2)}}, @{Name="Speedup";Expression={[math]::Round($_.Speedup, 2)}}
 
 Write-Host "Dados brutos salvos em $rawCsv"
 Write-Host "Dados agregados salvos em $aggCsv"
+

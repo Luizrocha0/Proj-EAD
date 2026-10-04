@@ -9,16 +9,18 @@ O endpoint valida `size` (máx. 20.000) e `threads` (máx. `núcleos disponívei
 
 ## Por que 1.000–8.000 registros, e não 100 mil / 1 milhão diretamente
 
-O algoritmo é O(n²) (ver `docs/justificativa.md`). A escala de tempo medida é quadrática e confirmada nos dados abaixo. Extrapolando a partir do ponto medido em `n=8000` (23.017 ms sequencial):
+O algoritmo é O(n²) (ver `docs/justificativa.md`). A escala de tempo medida é quadrática e confirmada nos dados abaixo. Extrapolando a partir do ponto medido em `n=8000` da **série histórica / hardware base** (23.017 ms sequencial):
 
 | n | tempo sequencial estimado | com 8 threads (speedup ~3.7x medido) |
 |---|---|---|
 | 100.000 | ≈ 3.596 s (~1h) | ≈ 970 s (~16 min) |
 | 1.000.000 | ≈ 359.641 s (~4,2 dias) | ≈ 96.700 s (~27h) |
 
-Rodar a versão sequencial em 1 milhão de registros de fato, uma única vez, levaria dias — inviável para esta atividade e, mais importante, inviável em produção. Por isso a tabela de medições reais usa tamanhos de 1.000 a 8.000, onde o crescimento O(n²) já é claramente visível e mensurável em segundos, e a extrapolação para 100 mil / 1 milhão é calculada analiticamente a partir da própria Big-O confirmada — o mesmo raciocínio que se aplicaria à escala nacional do enunciado.
+Rodar a versão sequencial em 1 milhão de registros de fato, uma única vez, levaria dias — inviável para esta atividade e, mais importante, inviável em produção. Por isso a tabela de medições reais usa tamanhos mais contidos, onde o crescimento O(n²) já é claramente visível e mensurável em segundos, e a extrapolação para 100 mil / 1 milhão é calculada analiticamente a partir da própria Big-O confirmada — o mesmo raciocínio que se aplicaria à escala nacional do enunciado.
 
-## Tabela de resultados medidos
+## Tabela de resultados (Série Histórica - Hardware Base)
+
+*(Nota: os relatórios em tempo real no README atualizado podem refletir execuções mais recentes, como a série que registra 9.149 ms para n=8000. Os dados abaixo pertencem ao benchmark inicial).*
 
 | n | threads | modo | tempo (ms) | speedup (vs. 1 thread) |
 |---|---------|------|------------|-------------------------|

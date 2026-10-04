@@ -200,7 +200,7 @@ A operação de detecção de duplicatas (algoritmo _fuzzy_ usando distância de
 
 O ambiente de execução e a coleta seguiram o seguinte método rigoroso:
 - **Aquecimento (Warmup):** Realizada 1 execução prévia para descartar tempos de inicialização e compilação JIT da JVM.
-- **Repetições e Agregação:** 5 repetições para cada configuração (1, 2, 4 e 8 threads). O PowerShell extraiu da resposta JSON o `processingTimeMs` real (descartando a latência da rede HTTP) e calculou as médias agregadas para o speedup.
+- **Repetições e Agregação:** 5 repetições para cada configuração (1, 2, 4 e 8 threads). O PowerShell utilizou o `responseTimeMs` (incluindo a latência HTTP do endpoint, conforme o enunciado) e calculou as médias agregadas para o speedup.
 - **Validação:** Todas as variações e threads encontraram exatamente o mesmo número de duplicatas. Erros HTTP e divergências abortariam o benchmark.
 
 | Tamanho (n) | Threads | Tempo Médio (ms) | Speedup |
