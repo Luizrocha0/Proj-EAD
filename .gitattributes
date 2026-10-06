@@ -1,0 +1,3 @@
+# Evitar conversão de finais de linha e diffs de texto nos artefatos.
+*.pdf binary
+*.png binary

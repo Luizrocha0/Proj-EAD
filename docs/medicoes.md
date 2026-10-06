@@ -1,54 +1,76 @@
-# Medições — Sequencial vs. Threads
+# Medições — Sequencial vs. threads
 
-Endpoint real: `GET /api/duplicates/detect?size={n}&threads={t}&mode={platform|virtual}`.
-Dados gerados via `DataGeneratorService` (seed fixa, reprodutível). Ambiente: 16 núcleos lógicos, Java 21 (virtual threads habilitadas), execução local via `mvnw spring-boot:run`.
+Série única publicada em **06/10/2026**, baseada em [dados brutos](../bench/measurements.csv). São 40 execuções: tamanhos 8.000 e 16.000, modo `platform`, 1, 2, 4 e 8 threads, cinco repetições por configuração.
 
-Script de medição e geração do gráfico: `bench/plot_speedup.py`. Dados brutos: `bench/measurements.csv`. Gráfico: `bench/speedup.png`.
+## Método e evidências
 
-O endpoint valida `size` (máx. 20.000) e `threads` (máx. `núcleos disponíveis × 4`) na borda, para evitar que uma única requisição esgote memória (`size` sem teto) ou threads do SO (`threads` sem teto) — achado da auditoria de segurança (`security-auditor`). Todas as medições abaixo estão dentro desses limites.
+O endpoint é `GET /api/duplicates/detect?size={n}&threads={t}&mode=platform`. Com uma thread, o controlador chama a versão sequencial; com mais threads, usa um pool fixo. `DataGeneratorService` gera nomes sintéticos de medicamentos com seed 42 e possíveis erros de digitação.
 
-## Por que 1.000–8.000 registros, e não 100 mil / 1 milhão diretamente
+O script [measure.ps1](../bench/measure.ps1) prevê uma execução de aquecimento com 8.000 registros e uma thread, excluída do CSV. Isso reduz efeitos de inicialização, mas não garante que todos os efeitos da JVM sejam eliminados. O projeto requer Java 21; o CSV não registra hardware, sistema operacional nem versão exata do JDK da coleta.
 
-O algoritmo é O(n²) (ver `docs/justificativa.md`). A escala de tempo medida é quadrática e confirmada nos dados abaixo. Extrapolando a partir do ponto medido em `n=8000` da **série histórica / hardware base** (23.017 ms sequencial):
+`responseTimeMs` é o tempo de parede medido pelo cliente com `Stopwatch` ao redor de `Invoke-RestMethod`. Inclui chamada HTTP, processamento no servidor e retorno ao cliente. `processingTimeMs` mede internamente apenas a detecção; a tabela usa exclusivamente `responseTimeMs`.
 
-| n | tempo sequencial estimado | com 8 threads (speedup ~3.7x medido) |
-|---|---|---|
-| 100.000 | ≈ 3.596 s (~1h) | ≈ 970 s (~16 min) |
-| 1.000.000 | ≈ 359.641 s (~4,2 dias) | ≈ 96.700 s (~27h) |
+Para cada configuração, `Tt = soma(responseTimeMs das cinco repetições) / 5`. O speedup é `T1 / Tt`, com a mesma entrada. Os valores são arredondados a duas casas após o cálculo.
 
-Rodar a versão sequencial em 1 milhão de registros de fato, uma única vez, levaria dias — inviável para esta atividade e, mais importante, inviável em produção. Por isso a tabela de medições reais usa tamanhos mais contidos, onde o crescimento O(n²) já é claramente visível e mensurável em segundos, e a extrapolação para 100 mil / 1 milhão é calculada analiticamente a partir da própria Big-O confirmada — o mesmo raciocínio que se aplicaria à escala nacional do enunciado.
+Todas as 40 linhas registram `SUCCESS`. Para 8.000 registros, todas retornam 3.198.218 pares duplicados; para 16.000, 12.801.507. A igualdade sustenta a equivalência nesta série, sem constituir prova geral de ausência de falhas de concorrência. `DuplicateDetectionServiceTest` contém testes automatizados de equivalência entre versões e casos de borda.
 
-## Tabela de resultados (Série Histórica - Hardware Base)
+## Resultados atuais
 
-*(Nota: os relatórios em tempo real no README atualizado podem refletir execuções mais recentes, como a série que registra 9.149 ms para n=8000. Os dados abaixo pertencem ao benchmark inicial).*
+| n | threads | modo | média HTTP (ms) | speedup |
+|---|---|---|---|---|
+| 8000 | 1 | platform | 23883.00 | 1.00x |
+| 8000 | 2 | platform | 18925.60 | 1.26x |
+| 8000 | 4 | platform | 11105.20 | 2.15x |
+| 8000 | 8 | platform | 7209.80 | 3.31x |
+| 16000 | 1 | platform | 97867.00 | 1.00x |
+| 16000 | 2 | platform | 81400.00 | 1.20x |
+| 16000 | 4 | platform | 69518.20 | 1.41x |
+| 16000 | 8 | platform | 41297.40 | 2.37x |
 
-| n | threads | modo | tempo (ms) | speedup (vs. 1 thread) |
-|---|---------|------|------------|-------------------------|
-| 1000 | 1 | platform | 362 | 1.00x |
-| 1000 | 2 | platform | 288 | 1.26x |
-| 1000 | 4 | platform | 176 | 2.06x |
-| 1000 | 8 | platform | 106 | 3.42x |
-| 1000 | 8 | virtual  | 118 | 3.07x |
-| 2000 | 1 | platform | 1494 | 1.00x |
-| 2000 | 2 | platform | 1137 | 1.31x |
-| 2000 | 4 | platform | 682 | 2.19x |
-| 2000 | 8 | platform | 408 | 3.66x |
-| 2000 | 8 | virtual  | 395 | 3.78x |
-| 4000 | 1 | platform | 5842 | 1.00x |
-| 4000 | 2 | platform | 4590 | 1.27x |
-| 4000 | 4 | platform | 2625 | 2.23x |
-| 4000 | 8 | platform | 1575 | 3.71x |
-| 4000 | 8 | virtual  | 1567 | 3.73x |
-| 8000 | 1 | platform | 23017 | 1.00x |
-| 8000 | 2 | platform | 17486 | 1.32x |
-| 8000 | 4 | platform | 10737 | 2.14x |
-| 8000 | 8 | platform | 6194 | 3.72x |
-| 8000 | 8 | virtual  | 6343 | 3.63x |
+O tempo sequencial cresce `97867 / 23883 ≈ 4,10x` ao dobrar a entrada. Esse comportamento é compatível com o custo quadrático de pares, mantendo textos de tamanho semelhante; dois tamanhos não provam empiricamente a complexidade.
 
-`duplicatesFound` é idêntico entre sequencial, paralelo e virtual para cada `n` (confirmado em `bench/measurements.csv` e nos testes automatizados) — sem race condition.
+Há variação entre repetições, especialmente em 16.000 registros e duas threads: de 72.741 a 102.051 ms. A média inclui todas as cinco observações. Os dados não permitem atribuir essa variação a utilização de CPU, temperatura ou outros processos. Nenhuma virtual thread foi medida nesta série.
 
-## Gráfico
+## Escala do enunciado e limites
 
-![speedup](speedup.png)
+100 mil e 1 milhão de registros são exemplos de escala do enunciado, sem execuções correspondentes no CSV. O endpoint atual limita `size` a 20.000 e `threads` a quatro vezes os processadores disponíveis à JVM.
 
-(gerado em `bench/speedup.png`: tempo vs. threads por tamanho de entrada, e speedup vs. threads comparado ao speedup ideal linear)
+Uma estimativa ilustrativa, mantendo o mesmo custo por par, aplica `T(n) = 23883 × (n / 8000)²` ms à média sequencial atual:
+
+| n | tempo sequencial estimado, sem execução |
+|---|---|
+| 100.000 | ≈ 3.731,72 s (1,04 h) |
+| 1.000.000 | ≈ 373.171,88 s (4,32 dias) |
+
+Esses números dependem de textos, recursos e condições semelhantes. Não são previsões validadas; não se extrapola um speedup constante, pois ele já varia entre os dois tamanhos medidos. A [justificativa](justificativa.md) explica a Big-O; a [análise](analise.md) discute limites e propostas futuras.
+
+## Gráfico e reprodução
+
+![Tempo médio HTTP e speedup da série atual](speedup.png)
+
+O gráfico em `docs/speedup.png` é uma cópia do [gráfico de benchmark](../bench/speedup.png). O script [plot_speedup.py](../bench/plot_speedup.py) recalcula [o CSV agregado](../bench/measurements_agg.csv) e os gráficos a partir da série bruta, sem executar nova coleta:
+
+```bash
+python bench/plot_speedup.py
+```
+
+Para validar os dados sem gerar arquivos nem carregar `matplotlib`, e executar os testes do script:
+
+```bash
+python bench/plot_speedup.py --check
+python -m unittest discover -s bench -p "test_*.py"
+```
+
+Para gerar o relatório PDF a partir dos Markdown e do CSV agregado:
+
+```bash
+python bench/build_report.py
+```
+
+Execute na raiz do projeto com Python 3.12+. Para gerar os gráficos e o PDF, instale as dependências fixadas em `bench/requirements.txt`: `matplotlib==3.11.2` e `reportlab==4.4.9`.
+
+```bash
+python -m pip install -r bench/requirements.txt
+```
+
+O [README](../README.md#benchmark-de-paralelismo-threads) inclui instalação em ambiente isolado. O [relatório PDF](RotaVital_Threads_Relatorio.pdf) reúne a entrega documental.

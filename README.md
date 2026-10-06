@@ -196,25 +196,39 @@ curl "http://localhost:8080/api/duplicates/detect?size=8000&threads=8&mode=platf
 
 ## Benchmark de Paralelismo (Threads)
 
-A operação de detecção de duplicatas (algoritmo _fuzzy_ usando distância de Levenshtein) foi o gargalo CPU-bound identificado. Com 8000 registros, o algoritmo O(n²) realiza milhões de comparações:
+A detecção de duplicatas compara pares de textos com distância de Levenshtein. O cálculo em memória custa O(n² · L²), para `n` registros de comprimento limitado por `L`, e permite distribuir pares independentes entre threads.
 
-O ambiente de execução e a coleta seguiram o seguinte método rigoroso:
-- **Aquecimento (Warmup):** Realizada 1 execução prévia para descartar tempos de inicialização e compilação JIT da JVM.
-- **Repetições e Agregação:** 5 repetições para cada configuração (1, 2, 4 e 8 threads). O PowerShell utilizou o `responseTimeMs` (incluindo a latência HTTP do endpoint, conforme o enunciado) e calculou as médias agregadas para o speedup.
-- **Validação:** Todas as variações e threads encontraram exatamente o mesmo número de duplicatas. Erros HTTP e divergências abortariam o benchmark.
+A série publicada em **06/10/2026** usa exclusivamente [bench/measurements.csv](bench/measurements.csv): 8.000 e 16.000 registros, modo `platform`, 1, 2, 4 e 8 threads, com 5 repetições por configuração. As 40 execuções registram `SUCCESS`, com 3.198.218 pares duplicados para 8.000 registros e 12.801.507 para 16.000, iguais entre repetições e quantidades de threads.
 
-| Tamanho (n) | Threads | Tempo Médio (ms) | Speedup |
+O script [bench/measure.ps1](bench/measure.ps1) prevê um aquecimento com 8.000 registros e uma thread antes da coleta. A tabela usa a média de `responseTimeMs`, medida pelo cliente ao redor de `Invoke-RestMethod`; inclui a chamada HTTP e seu processamento até o retorno. `processingTimeMs` é o tempo interno de detecção e constitui outra métrica. O speedup é `T1 / Tt`, usando médias para o mesmo tamanho.
+
+| Tamanho (n) | Threads | Tempo Médio HTTP (ms) | Speedup |
 |---|---|---|---|
-| 8000 | 1 | 9149.00 | 1.00x |
-| 8000 | 2 | 6891.80 | 1.33x |
-| 8000 | 4 | 4291.20 | 2.13x |
-| 8000 | 8 | 2716.20 | 3.37x |
-| 16000 | 1 | 36479.60 | 1.00x |
-| 16000 | 2 | 27703.40 | 1.32x |
-| 16000 | 4 | 16565.00 | 2.20x |
-| 16000 | 8 | 10010.80 | 3.64x |
+| 8000 | 1 | 23883.00 | 1.00x |
+| 8000 | 2 | 18925.60 | 1.26x |
+| 8000 | 4 | 11105.20 | 2.15x |
+| 8000 | 8 | 7209.80 | 3.31x |
+| 16000 | 1 | 97867.00 | 1.00x |
+| 16000 | 2 | 81400.00 | 1.20x |
+| 16000 | 4 | 69518.20 | 1.41x |
+| 16000 | 8 | 41297.40 | 2.37x |
 
-> Os detalhes completos do relatório de paralelização, o gráfico gerado `bench/speedup.png` e os dados brutos e agregados `.csv` estão localizados em `docs/threads/` e `bench/`.
+Para recalcular [os dados agregados](bench/measurements_agg.csv) e os gráficos a partir dos dados brutos, execute na raiz do projeto com Python 3.12+ e `matplotlib`:
+
+```bash
+python bench/plot_speedup.py
+python bench/plot_speedup.py --check
+```
+
+Para instalar as versões fixadas em `bench/requirements.txt` (`matplotlib==3.11.2` e `reportlab==4.4.9`), use um ambiente isolado. Exemplo no PowerShell:
+
+```powershell
+python -m venv .venv-bench
+.\.venv-bench\Scripts\python.exe -m pip install -r bench/requirements.txt
+.\.venv-bench\Scripts\python.exe bench/plot_speedup.py
+```
+
+Consulte [medições e limites](docs/medicoes.md), [justificativa](docs/justificativa.md), [análise](docs/analise.md) e [relatório PDF](docs/RotaVital_Threads_Relatorio.pdf). O gráfico está em [bench/speedup.png](bench/speedup.png), com cópia em [docs/speedup.png](docs/speedup.png). Esta série não contém medições de virtual threads; o CSV não identifica hardware nem a versão exata do JDK usado.
 
 ---
 
@@ -243,6 +257,7 @@ O pipeline em `.github/workflows/ci.yml` executa automaticamente:
 4. **build-docker** — Constrói imagem Docker
 5. **health-check** — Verifica `/actuator/health` (apenas na `main`)
 6. **deploy-render** — Deploy automático no Render (apenas na `main`)
+7. **check-benchmark** — Confere os testes de cálculo e a equivalência entre medições brutas e agregadas; bloqueia o build Docker em caso de divergência
 
 ### Render
 
