@@ -7,6 +7,17 @@ on:
     branches: [main]
 
 jobs:
+  check-benchmark:
+    name: "SO — Validação das medições"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validar cálculo e equivalência dos dados publicados
+        run: |
+          python3 -m unittest discover -s bench -p 'test_*.py'
+          python3 bench/plot_speedup.py --check
+
   # ─────────────────────────────────────────────
   # JOB 1: Estruturas AED em C (com sanitizers)
   # ─────────────────────────────────────────────
@@ -101,7 +112,7 @@ jobs:
   build-docker:
     name: "Docker — Build da imagem"
     runs-on: ubuntu-latest
-    needs: [test-c, build-java]
+    needs: [test-c, build-java, check-benchmark]
 
     steps:
       - name: Checkout

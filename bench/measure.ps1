@@ -1,6 +1,7 @@
 param(
     [string]$baseUrl = "http://localhost:8080/api/duplicates/detect",
     [int[]]$sizes = @(8000, 16000),
+    [ValidateRange(1, 2147483647)]
     [int]$runs = 5
 )
 
@@ -11,9 +12,13 @@ if (-not $scriptDir) { $scriptDir = "." }
 
 $rawCsv = Join-Path $scriptDir "measurements.csv"
 $aggCsv = Join-Path $scriptDir "measurements_agg.csv"
+$rawTmp = "${rawCsv}.tmp"
+$aggTmp = "${aggCsv}.tmp"
+$csvCulture = [System.Globalization.CultureInfo]::InvariantCulture
 
-"size,mode,threads,run,responseTimeMs,processingTimeMs,duplicatesFound,status" | Out-File $rawCsv -Encoding utf8
-"size,mode,threads,avgResponseTimeMs,speedup" | Out-File $aggCsv -Encoding utf8
+# Publicar os resultados somente após concluir toda a coleta com sucesso.
+"size,mode,threads,run,responseTimeMs,processingTimeMs,duplicatesFound,status" | Out-File $rawTmp -Encoding utf8
+"size,mode,threads,avgResponseTimeMs,speedup" | Out-File $aggTmp -Encoding utf8
 
 $threadsList = @(1, 2, 4, 8)
 $mode = "platform"
@@ -79,7 +84,7 @@ foreach ($size in $sizes) {
                 exit 1
             }
 
-            "${size},${mode},${threads},${i},${responseTimeMs},${procTime},${count},$($result.status)" | Out-File $rawCsv -Append -Encoding utf8
+            "${size},${mode},${threads},${i},${responseTimeMs},${procTime},${count},$($result.status)" | Out-File $rawTmp -Append -Encoding utf8
             
             $times += $responseTimeMs
         }
@@ -104,8 +109,29 @@ foreach ($size in $sizes) {
             Speedup = $speedup
         }
 
-        "${size},${mode},${threads},${avg},${speedup}" | Out-File $aggCsv -Append -Encoding utf8
+        $avgText = $avg.ToString("F2", $csvCulture)
+        $speedupText = $speedup.ToString("F6", $csvCulture)
+        "${size},${mode},${threads},${avgText},${speedupText}" | Out-File $aggTmp -Append -Encoding utf8
     }
+}
+
+$rawExisted = Test-Path -LiteralPath $rawCsv
+$previousRaw = if ($rawExisted) { [System.IO.File]::ReadAllBytes($rawCsv) } else { $null }
+$rawPublished = $false
+try {
+    Move-Item -LiteralPath $rawTmp -Destination $rawCsv -Force
+    $rawPublished = $true
+    Move-Item -LiteralPath $aggTmp -Destination $aggCsv -Force
+} catch {
+    # Se o segundo arquivo estiver bloqueado, restaurar o bruto anterior.
+    if ($rawPublished) {
+        if ($rawExisted) {
+            [System.IO.File]::WriteAllBytes($rawCsv, $previousRaw)
+        } else {
+            Remove-Item -LiteralPath $rawCsv
+        }
+    }
+    throw
 }
 
 Write-Host "`nAnálise Agregada:"

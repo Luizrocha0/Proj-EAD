@@ -37,3 +37,8 @@ aed-c/tests/*.exe
 # ── Outros ──
 *.bak
 *.tmp
+
+# Python (scripts de benchmark)
+__pycache__/
+*.py[cod]
+.venv-bench/
