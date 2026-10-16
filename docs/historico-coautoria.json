@@ -3,6 +3,7 @@
   "original_head": "b410dfcf8a6caa39c1fde36fbaa3e52c39863bef",
   "updated_historical_head": "cb5700c7b7773e6a7af20d07d82a4469eb83833c",
   "backup_branch": "archive/main-before-coauth-20261016",
+  "backup_branch_status": "removed_at_user_request",
   "commits": [
     {
       "original_commit": "e703cc043f307a3dcc6d02d8fe478c565662d408",

@@ -278,7 +278,7 @@ O [plano original de setembro](PLANO_ENTREGA_AED_SO.md) é um registro históric
 
 ## Histórico e coautoria
 
-Os rodapés de coautoria foram organizados para os dois contribuidores identificados no GitHub, preservando autores, datas de autoria, datas de commit e os arquivos de cada uma das 12 versões anteriores. A alteração dos metadados muda os SHAs. O [histórico anterior](https://github.com/Luizrocha0/Proj-EAD/tree/archive/main-before-coauth-20261016) permanece em uma branch de backup; o [mapeamento dos commits](docs/historico-coautoria.json) permite conferir a correspondência.
+Os rodapés de coautoria foram organizados para os dois contribuidores identificados no GitHub, preservando autores, datas de autoria, datas de commit e os arquivos de cada uma das 12 versões anteriores. A alteração dos metadados muda os SHAs. O [mapeamento dos commits](docs/historico-coautoria.json) registra a correspondência entre as versões. A branch temporária de backup foi removida a pedido da equipe.
 
 Os novos documentos usam a data real da atualização. A distribuição das tarefas identifica responsabilidades futuras e não altera as datas acadêmicas das entregas anteriores.
 
