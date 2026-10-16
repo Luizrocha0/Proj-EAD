@@ -320,6 +320,6 @@ public Optional<Requisicao> espiar() {
 
 ## 4. Garantia de Equivalência
 
-- As mesmas **fixtures** (`fixtures/bolsas_u1.json` e `fixtures/requisicoes_u1.json`) são usadas nos testes C e Java.
+- Os testes C e Java reproduzem diretamente no código os valores das **fixtures** (`fixtures/bolsas_u1.json` e `fixtures/requisicoes_u1.json`); os arquivos JSON servem como referência e não são carregados pelas suítes.
 - Os **resultados esperados** (`fixtures/resultados_esperados_u1.json`) documentam a ordem e os valores exatos.
 - Os testes C (`aed-c/tests/test_lista.c`, `test_fila.c`) e Java (`ListaEstoqueTest.java`, `FilaRequisicaoTest.java`) verificam os mesmos cenários: vazio, inserção, consulta, remoção, ordem.

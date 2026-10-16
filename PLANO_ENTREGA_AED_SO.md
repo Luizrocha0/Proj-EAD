@@ -1,5 +1,7 @@
 # Plano de aplicação e entregas — Rota Vital (AED + SO)
 
+> **Registro histórico de 23/09/2026.** As pendências e atribuições abaixo refletem o planejamento daquela data. Consulte o [README](README.md) para o estado atual e a [divisão de tarefas da Infra U2](docs/infra-u2/divisao-tarefas.md) para as responsabilidades definidas em 16/10/2026. A atividade de Infra U2 — Parte 1 tem prazo em 20/10/2026; este plano original não incorpora esse enunciado posterior.
+
 **Equipe:** Eduardo Borges; Luiz Henrique Rocha; Eliziane Mota; Pedro Iranildo; Ricardo Severiano de Souza Filho  
 **Atualizado em:** 23/09/2026  
 **Escopo autorizado pela direção:** somente Algoritmos e Estruturas de Dados (AED) e Infraestrutura de Software (SO).

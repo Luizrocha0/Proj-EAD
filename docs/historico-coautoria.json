@@ -1,0 +1,152 @@
+{
+  "purpose": "Organização de coautoria; não cria evidência retroativa de TDD.",
+  "original_head": "b410dfcf8a6caa39c1fde36fbaa3e52c39863bef",
+  "updated_historical_head": "cb5700c7b7773e6a7af20d07d82a4469eb83833c",
+  "backup_branch": "archive/main-before-coauth-20261016",
+  "commits": [
+    {
+      "original_commit": "e703cc043f307a3dcc6d02d8fe478c565662d408",
+      "updated_commit": "c29474e7f61c9653ef2f6811ded1398ddc9e0c62",
+      "tree": "a654b2e6237cdb7c8d7d0d99d4ca854067040353",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790634486 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790634486 -0300",
+      "subject": "feat: AED U1 completa — lista + fila em C e Java com 27 testes",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "f4d8a67b3f8058f6f12dcc3603f4c71a3e02c118",
+      "updated_commit": "852b09c810e207c28f459b580d9deceefe15fa7d",
+      "tree": "cafe27b4f04545985244788e7fea8ac86e3cb02e",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790738893 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790738893 -0300",
+      "subject": "fix: adicionar chmod +x mvnw no CI para corrigir permissão no Linux",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "003da2cbad5b264a709bfd7634f88aabc6ab6830",
+      "updated_commit": "8bd3cbb66a25aeb8dc104d12237d13b380819cad",
+      "tree": "54bcff7164b9f5fe03f17acf48aa50cd2670f3cf",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739120 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739120 -0300",
+      "subject": "fix: chmod +x mvnw no Dockerfile para corrigir build Docker",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "60106b2b32df9e353dea8f285595fcaaad47b7b7",
+      "updated_commit": "672ef47f34e75eef9b7a8a83488328b7baa7cb43",
+      "tree": "cd7bc711925075723b2befffdc067fb78a2f2783",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739472 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739472 -0300",
+      "subject": "chore: marcar mvnw como executável no Git (permissão definitiva)",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "05f67161077fe14965f09a64e6f63ef782817d62",
+      "updated_commit": "69b6449530174816d50be5114356fcc15e3925ac",
+      "tree": "4f1e8b060b8dc29ac38f20f920581589f6fde15d",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739747 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790739747 -0300",
+      "subject": "feat: adicionar render.yaml para deploy com 1 clique",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "0b8167c63c88fa4a413221af2a12e86b1bc2cd2c",
+      "updated_commit": "6f1b5c7304bc56aa3d4afd9750e57aa75bcc6de3",
+      "tree": "1e049b61881c853b6d9b79e306dbb3e4276ff319",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790741338 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790741338 -0300",
+      "subject": "feat: incorporar atividade de threads (SO U1) com endpoint de duplicatas, benchmark e testes",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "ee8326ff1a23e59f7ca4c921b60178ee8d0ca401",
+      "updated_commit": "adad75960abe8a001d743f48ac0d831fe71e92f4",
+      "tree": "6d507783964d49a80cf726ce7b7ccc48db668889",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790741511 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790741511 -0300",
+      "subject": "chore: remover arquivos de configuração da IA (.agents)",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "35e07d1e90d29383f109d2575b0304b523f9dc7a",
+      "updated_commit": "4a0bb7e863335dbf2fd506ccc5e9b4503f251459",
+      "tree": "7e6d26c6bcae19d1345b1b962d8aa38e931f7d00",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790872028 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790872028 -0300",
+      "subject": "feat: resolve pendencias finais",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "1045f25305f5ecf07fa905d7ee3a44264823c634",
+      "updated_commit": "6cd5eb62c30bea5e731d1b8ca2eb3e643a3eaf8d",
+      "tree": "653294c6f6b917ce9e570b5f00a2bcb9dda74d7b",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790949540 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1790949540 -0300",
+      "subject": "feat: correcoes da U1 de AED e verificacao do Render",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "f11a75b26f9bb26749afccd79655f4de171bf4e4",
+      "updated_commit": "fd220d2513f2532478798709f02d64f472c16e03",
+      "tree": "3c3646a1bd8eac4ff85b0325780bfea00c8e6b0c",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1791133323 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1791133323 -0300",
+      "subject": "fix: atualiza benchs para response time e detalha serie historica",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "892575bf2488c337230479569cb52e178e5b9c8c",
+      "updated_commit": "616da2cc49ad383e0089b6313767b2fcd51afd54",
+      "tree": "595c9fb9eddec910e9263ffcdb1db4edced62f4a",
+      "original_author_header": "author Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1791306767 -0300",
+      "original_committer_header": "committer Luizrocha0 <luiz.rochahenrique2006@gmail.com> 1791306767 -0300",
+      "subject": "fix: atualiza grafico e csv com os dados corrigidos de responseTimeMs",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Ricardo Severiano de Souza Filho <krgamers139@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    },
+    {
+      "original_commit": "b410dfcf8a6caa39c1fde36fbaa3e52c39863bef",
+      "updated_commit": "cb5700c7b7773e6a7af20d07d82a4469eb83833c",
+      "tree": "7cd45a010469701cf4dddf679ba659f27aa4003c",
+      "original_author_header": "author Ricardo Severiano de Souza Filho <krgamers139@gmail.com> 1791298371 -0300",
+      "original_committer_header": "committer Ricardo Severiano de Souza Filho <krgamers139@gmail.com> 1791298714 -0300",
+      "subject": "fix(so): alinhe medições e relatório aos dados brutos da U1",
+      "added_coauthor_trailers": [
+        "Co-authored-by: Luiz Henrique Rocha <luiz.rochahenrique2006@gmail.com>"
+      ],
+      "content_and_dates_preserved": true
+    }
+  ]
+}
