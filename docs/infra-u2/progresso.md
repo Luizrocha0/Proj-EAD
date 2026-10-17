@@ -12,7 +12,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 1** | Story Map e Critérios de Aceite da Release 1 | **Concluída** | 17/10/2026 |
 | **Etapa 2** | E1: Base de Containers (Dockerfile, Compose, PostgreSQL) | **Concluída** | 17/10/2026 |
 | **Etapa 3** | E2: H1 — Cadastro e Recuperação Persistente (TDD) | **Concluída** | 17/10/2026 |
-| **Etapa 4** | E2: H2 — Listagem e Consulta Persistente (TDD) | Pendente | — |
+| **Etapa 4** | E2: H2 — Listagem e Consulta Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | Pendente | — |
 | **Etapa 6** | E2: Integração e Gates na Esteira | Pendente | — |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | Pendente | — |
@@ -640,3 +640,119 @@ Uma terceira e conclusiva rodada de auditoria adversarial atacou os casos de bor
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
   - A listagem geral persistente do estoque (H2) e a remoção persistente (H3) permanecem expressamente pendentes para as Etapas 4 e 5.
 - **Próxima etapa:** **Etapa 4 — E2: H2 — Listagem e Consulta Persistente (TDD)** (implementação guiada por TDD da listagem persistente, envelope padronizado, suporte a estoque vazio, ordenação temporal LIFO e recuperação de duplicatas no PostgreSQL).
+
+---
+
+## Etapa 4: E2: H2 — Listagem e Consulta Persistente (TDD)
+
+- **Estado:** Concluída
+- **Data de Execução:** 17/10/2026
+- **Branch:** `main`
+- **Regra de Integridade:** Não-regressão estrita dos 120 testes anteriores (U1 e H1), totalizando agora 130 testes automatizados com 100% de aprovação. A história H3 (remoção persistente) permanece estritamente pendente para a Etapa 5.
+
+---
+
+### 1. Objetivos da Etapa e Escopo de H2
+
+A História H2 estabelece a consulta e listagem do estoque sob o perfil de infraestrutura (`infra` com PostgreSQL) mantendo equivalência de negócio e semântica com a estrutura em memória da U1:
+1. **Operação `listar()`:** Retorno de `List<Bolsa>` na interface `EstoqueStorage`, implementada no adaptador em memória `ListaEstoqueStorage` (perfis `u1` e `default`) e no adaptador persistente `JdbcEstoqueStorage` (perfil `infra`).
+2. **Ordenação LIFO Estrita no PostgreSQL:** A listagem sob o perfil `infra` executa `SELECT ... FROM bolsas ORDER BY id_seq DESC`, garantindo que os registros inseridos mais recentemente encabeçam a lista, correspondendo de forma determinística à inserção na cabeça da lista encadeada da U1.
+3. **Envelope Padronizado:** O endpoint `GET /api/estoque` expõe o contrato JSON `{"bolsas": [...], "tamanho": N}`, inclusive para estoque vazio (`{"bolsas": [], "tamanho": 0}`).
+4. **Preservação de IDs Duplicados:** Suporte integral a múltiplas ocorrências do mesmo identificador de negócio `id`, mantendo cada tupla em sua respectiva posição temporal LIFO.
+5. **Fail-Fast de Persistência:** Falhas de conectividade ou I/O no banco sob o perfil `infra` propagam `DataAccessException` imediatamente, sem mascaramento nem fallback silencioso para memória.
+6. **Segregação Estrita de H3:** O método `removerPorId` permanece lançando `UnsupportedOperationException("Pendente para Etapa 5 (H3)")`.
+
+---
+
+### 2. Ciclo Red → Green → Refactor por Tarefa Granular
+
+#### 2.1. Tarefa T2.1: Operação `listar()` em `EstoqueStorage` e `ListaEstoqueStorage`
+- **Planejamento:** Adicionar assinatura `List<Bolsa> listar()` na interface `EstoqueStorage` e implementar em `ListaEstoqueStorage` preservando a ordem LIFO da cabeça para a cauda (`Arrays.asList(listaEstoque.toArray())`).
+- **Implementação Red:**
+  - Adicionados testes unitários em `ListaEstoqueStorageTest`: `deveListarBolsasEmOrdemLIFOComLista`, `deveRetornarListaVaziaQuandoEstoqueVazio` e `devePreservarTodasAsOcorrenciasDeIdsDuplicadosEmOrdemLIFO`.
+  - Stub padrão inicial lançando `UnsupportedOperationException: Stub para ciclo TDD Red T2.1`.
+  - **Evidência Red:** Execução de `mvnw.cmd test -Dtest=ListaEstoqueStorageTest` falhou com 3 erros (`UnsupportedOperationException`). Commit: `d5157f5`.
+- **Implementação Green:**
+  - Implementado `listar()` em `ListaEstoqueStorage` delegando para `Arrays.asList(listaEstoque.toArray())`.
+  - Interface `EstoqueStorage` purificada com a assinatura pura `List<Bolsa> listar();`.
+  - **Evidência Green:** 11/11 testes de `ListaEstoqueStorageTest` aprovados com 100% de sucesso. Commit: `1a1589f`.
+
+#### 2.2. Tarefa T2.2: Implementação de `listar()` no Adaptador `JdbcEstoqueStorage`
+- **Planejamento:** Executar query SQL `SELECT id, tipo_sanguineo, volume_ml, data_coleta, validade, doador FROM bolsas ORDER BY id_seq DESC` via `JdbcTemplate` com anotação `@Transactional(readOnly = true)`.
+- **Implementação Red:**
+  - Substituição do teste de segregação H2 em `JdbcEstoqueStorageTest` por testes de `listar()`: ordenação por `id_seq DESC`, retorno vazio para tabela vazia, suporte a IDs duplicados, fail-fast em `DataAccessException` e equivalência em `listarTodas()`.
+  - Stub em `JdbcEstoqueStorage.listar()` lançando `UnsupportedOperationException: Pendente para Etapa 4 (H2)`.
+  - **Evidência Red:** Execução de `mvnw.cmd test -Dtest=JdbcEstoqueStorageTest` falhou com 4 erros e 1 falha (`UnsupportedOperationException`). Commit: `9f2d85b`.
+- **Implementação Green:**
+  - Implementados `listar()` com `ORDER BY id_seq DESC` e `listarTodas()` delegando a `listar().toArray(new Bolsa[0])`.
+  - **Evidência Green:** 18/18 testes de `JdbcEstoqueStorageTest` aprovados com 100% de sucesso. Commit: `38dd729`.
+
+#### 2.3. Tarefa T2.3: Integração de `EstoqueService.listarEstoque()` e Envelope do `EstoqueController`
+- **Planejamento:** Integrar `EstoqueService.listarEstoque()` delegando a `storage.listar()` e atualizar o endpoint `GET /api/estoque` em `EstoqueController` para montar o envelope `{"bolsas": [...], "tamanho": N}`.
+- **Implementação Red:**
+  - Adicionado stub em `EstoqueService.listarEstoque()` lançando `UnsupportedOperationException: Stub para ciclo TDD Red T2.3`.
+  - Adicionados testes de delegação e fail-fast em `EstoqueServiceTest`.
+  - **Evidência Red:** Execução de `mvnw.cmd test -Dtest=EstoqueServiceTest` falhou com 1 erro e 1 falha (`UnsupportedOperationException`). Commit: `f595f60`.
+- **Implementação Green:**
+  - Implementado retorno de `storage.listar()` em `EstoqueService.listarEstoque()`.
+  - Atualizado `EstoqueController.listar()` para consumir `estoqueService.listarEstoque()`.
+  - **Evidência Green:** 25/25 testes aprovados em `EstoqueServiceTest` e `EstoqueControllerCaracterizacaoTest`. Commit: `25960c8`.
+
+---
+
+### 3. Bateria de Testes em Três Níveis de H2
+
+A rastreabilidade e cobertura de H2 foi implementada e validada em 3 níveis:
+
+1. **Nível 1 — Testes Unitários de Regra e Domínio (sem banco externo):**
+   - `ListaEstoqueStorageTest` (11 testes): LIFO da cabeça para cauda, retorno vazio, preservação de duplicatas e limites de entrada.
+   - `JdbcEstoqueStorageTest` (18 testes): SQL com `ORDER BY id_seq DESC`, retorno vazio, integridade de duplicatas, fail-fast sem fallback e segregação de H3.
+   - `EstoqueServiceTest` (11 testes): delegação de `listarEstoque()`, propagação de exceção, injeção e limites.
+   - `EstoqueControllerCaracterizacaoTest` (15 testes): endpoint `GET /api/estoque` com envelope `{"bolsas": [...], "tamanho": N}`, caso vazio `{"bolsas": [], "tamanho": 0}` e duplicatas preservadas sob o perfil `u1`.
+   - **Total de Testes Unitários no Surefire:** **130 testes Java** executados com 100% de aprovação (0 falhas, 0 erros, tempo ~12.4s).
+2. **Nível 2 — Testes de Integração com PostgreSQL Real (Testcontainers):**
+   - `JdbcEstoqueStorageIT`:
+     - `deveListarBolsasEmOrdemLIFOComPostgreSqlReal`: insere 5 bolsas em ordem temporal (001 a 005) e comprova retorno exato na ordem reversa (005 a 001) via `id_seq DESC`.
+     - `deveRetornarListaVaziaQuandoEstoqueEstiverVazioNoPostgreSql`: valida retorno `[]` e tamanho `0` em tabela vazia.
+     - `deveListarTodasOcorrenciasDeIdsDuplicadosEmSuasPosicoesTemporais`: insere duplicatas e comprova recuperação de todas as ocorrências em suas posições temporais relativas.
+     - `deveLancarUnsupportedOperationExceptionAoRemoverPorId`: comprova segregação estrita de H3 mantida pendente para a Etapa 5.
+   - `BolsaPersistidaIT`:
+     - `devePreservarListagemEOrdemLIFOAposReinicioContexto`: insere bolsas (incluindo duplicatas) no PostgreSQL real, encerra formalmente o contexto Spring (`applicationContext.close()`), recria um novo contexto Spring conectado ao mesmo banco e valida que a listagem recupera todas as bolsas com dados intactos e ordem LIFO preservada.
+3. **Nível 3 — Testes de Aceitação da API REST sob Perfil `infra`:**
+   - `EstoqueControllerIT`:
+     - `deveListarEstoqueComEnvelopeSobPerfilInfra`: executa `POST /api/estoque` para múltiplas bolsas e subsequentemente `GET /api/estoque`, validando HTTP 200 OK com envelope `{"bolsas": [...], "tamanho": 2}` ordenado em LIFO.
+     - `deveRetornarEnvelopeVazioSobPerfilInfraQuandoEstoqueVazio`: executa `GET /api/estoque` em banco limpo e valida HTTP 200 com payload exato `{"bolsas": [], "tamanho": 0}`.
+     - `deveListarMultiplasOcorrenciasDeIdsDuplicadosComEnvelope`: executa múltiplos cadastros com mesmo ID de negócio e valida que o array `bolsas` contém todos os registros correspondentes.
+- **Commit dos Testes em Três Níveis:** `72de699`.
+
+---
+
+### 4. Validação de Não-Regressão Geral
+
+- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
+- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** **130 testes aprovados** (`mvnw.cmd test`, tempo ~12.4s, 0 falhas, 0 erros).
+- **Compilação Limpa:** 18/18 classes de teste compiladas sem erros (`mvnw.cmd test-compile`).
+
+---
+
+### 5. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída**.
+- **Mudanças:** 
+  - Adição do método `List<Bolsa> listar()` na interface `EstoqueStorage`.
+  - Implementação de `listar()` em `ListaEstoqueStorage` (`@Profile({"u1", "default"})`), retornando `Arrays.asList(listaEstoque.toArray())` e preservando a ordem LIFO da cabeça para cauda.
+  - Implementação de `listar()` em `JdbcEstoqueStorage` (`@Profile("infra")`), executando query SQL com `ORDER BY id_seq DESC` sob `@Transactional(readOnly = true)`, retornando lista vazia quando o banco estiver limpo, suportando múltiplas ocorrências de IDs duplicados e propagando falhas sem fallback silencioso para memória.
+  - Integração do método `listarEstoque()` em `EstoqueService` e refatoração do endpoint `GET /api/estoque` em `EstoqueController` para retornar o envelope JSON padronizado `{"bolsas": [...], "tamanho": N}`, inclusive para estoque vazio (`{"bolsas": [], "tamanho": 0}`).
+  - Bateria de testes nos três níveis: unitários (130 testes no Surefire), integração com PostgreSQL (ordem LIFO, IDs duplicados e reinício do contexto Spring) e aceitação REST sob perfil `infra`.
+  - A história H3 (remoção persistente) permanece estritamente pendente para a Etapa 5, com testes comprovando lançamento de `UnsupportedOperationException`.
+- **Verificação:** 
+  - 130/130 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~12.4s).
+  - 18/18 classes de testes compiladas com sucesso via `.\mvnw.cmd test-compile`.
+  - Sequência rastreável Red → Green comprovada com commits no Git (`test:` e `feat:`).
+  - 54/54 testes em C aprovados (lista e fila encadeadas da U1).
+  - 7/7 testes de benchmarks em Python aprovados e verificação `--check` consistente.
+- **Pendências:** 
+  - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
+  - A remoção persistente (H3) permanece expressamente pendente para a Etapa 5.
+- **Próxima etapa:** **Etapa 5 — E2: H3 — Remoção Persistente (TDD)** (remoção LIFO da ocorrência mais recente de bolsas no PostgreSQL com integridade de duplicatas e deleção persistente pós-reinício).
