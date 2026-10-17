@@ -895,6 +895,7 @@ A implementação foi realizada em incrementos granulares com commits semântico
 | **T3.3** | `feat` | `26b19d9` | `feat(h3): adiciona removerBolsa em EstoqueService e valida integracao com EstoqueController (T3.3)` | Adição de `removerBolsa(id)` em `EstoqueService` delegando para `remover(id)` e validação da integração com `EstoqueController`. | **Green comprovado:** 14/14 testes em `EstoqueServiceTest` e 16/16 testes em `EstoqueControllerTest` aprovados. |
 | **T3.4** | `test` | `9ac7c3b` | `test(h3): implementa testes de integracao, aceitacao e caracterizacao em 3 niveis para H3` | Criação dos testes de integração em `JdbcEstoqueStorageIT`, persistência pós-reinício em `BolsaPersistidaIT`, aceitação em `EstoqueControllerIT` e caracterização simétrica em `EstoqueControllerCaracterizacaoTest` e `EstoqueServiceCaracterizacaoTest`. | **Green comprovado:** 164/164 testes unitários e de caracterização aprovados no Surefire e 19/19 classes compiladas no test-compile. |
 | **T3.2** | `test` | `b8cab3c` | `test(h3): adiciona teste unitario para preservacao de UTF-8 em removerPorId` | Teste unitário defensivo comprovando que IDs contendo acentuação e caracteres especiais UTF-8 são preservados na execução do `DELETE`. | **Green comprovado:** 24/24 testes em `JdbcEstoqueStorageTest` aprovados. Total de **165 testes Java**. |
+| **H3-Auditoria** | `fix` | `7680687` | `fix(h3): integra removerBolsa no EstoqueController, padroniza removerPorId em ListaEstoque e expande testes defensivos` | Auditoria adversarial R1: integra `removerBolsa` em `EstoqueController` e asserções em `EstoqueControllerTest`, adiciona `removerPorId` em `ListaEstoque`, expande testes em `ListaEstoqueTest` (+2), `EstoqueServiceTest` (+1) e `ListaEstoqueStorageTest` (+2). | **Green comprovado:** **170/170 testes Java aprovados** no Surefire. |
 
 ---
 
@@ -902,10 +903,11 @@ A implementação foi realizada em incrementos granulares com commits semântico
 
 | Nível | Arquivo / Classe | Testes Implementados | Escopo / Requisito Validado |
 |---|---|---|---|
-| **Nível 1 (Unitário)** | `ListaEstoqueStorageTest` | 14 testes | Remoção na lista encadeada em memória, LIFO sob duplicatas, decremento de tamanho, estoque vazio, validação de IDs nulos/em branco/$>50$. |
+| **Nível 1 (Unitário)** | `ListaEstoqueTest` | 16 testes (+2) | Estrutura encadeada da U1: delegação de `removerPorId` e preservação LIFO sob duplicatas a partir da cabeça. |
+| **Nível 1 (Unitário)** | `ListaEstoqueStorageTest` | 16 testes (+2) | Remoção na lista encadeada em memória, LIFO sob duplicatas, decremento de tamanho, estoque vazio, validação de IDs nulos/em branco/$>50$ e normalização com trim. |
 | **Nível 1 (Unitário)** | `JdbcEstoqueStorageTest` | 24 testes | Subquery SQL serial com `ORDER BY id_seq DESC LIMIT 1`, `rowsAffected > 0`, normalização com trim, propagação de `DataAccessException`, resiliência a SQL injection e UTF-8. |
-| **Nível 1 (Unitário)** | `EstoqueServiceTest` | 14 testes | Delegação de `remover` e `removerBolsa` para `storage.removerPorId`, fail-fast e propagação de exceções sem fallback. |
-| **Nível 1 (Unitário)** | `EstoqueControllerTest` | 16 testes | Endpoint `DELETE /api/estoque/{id}`, status HTTP 200 com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, status 404 para ID inexistente/em branco, propagação de falhas de banco. |
+| **Nível 1 (Unitário)** | `EstoqueServiceTest` | 15 testes (+1) | Delegação de `remover` e `removerBolsa` para `storage.removerPorId`, normalização via trim, fail-fast e propagação de exceções sem fallback. |
+| **Nível 1 (Unitário)** | `EstoqueControllerTest` | 16 testes | Endpoint `DELETE /api/estoque/{id}`, status HTTP 200 com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, status 404 para ID inexistente/em branco, delegação expressa para `removerBolsa` e propagação de falhas de banco. |
 | **Nível 1 (Caracterização)** | `EstoqueServiceCaracterizacaoTest` | 11 testes | Paridade funcional de `remover` e `removerBolsa` sob perfil `u1`, remoção da ocorrência mais recente sob duplicatas. |
 | **Nível 1 (Caracterização)** | `EstoqueControllerCaracterizacaoTest` | 19 testes | Paridade REST sob perfil `u1`, remoção via HTTP com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, remoção pontual de duplicata e consulta subsequente da anterior. |
 | **Nível 2 (Integração)** | `JdbcEstoqueStorageIT` | 14 testes | Execução contra PostgreSQL Real: deleção física na tabela `bolsas`, remoção exclusiva da ocorrência mais recente sob duplicatas, retorno de `false` para ausentes, resiliência a SQL injection. |
@@ -921,25 +923,26 @@ A implementação foi realizada em incrementos granulares com commits semântico
   - `test_fila.exe`: 31/31 testes aprovados (vazio, enfileiramento, desenfileiramento, reuso, espiar).
   - Zero vazamento de memória e zero alteração de arquivos de código ou teste em C.
 - **Benchmarks Python (SO U1):** **7/7 testes aprovados** (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **165 testes aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, 0 pulados, tempo ~17.7s).
+- **Suíte Completa Java:** **170 testes aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, 0 pulados, tempo ~29.0s).
 - **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`.\mvnw.cmd test-compile`).
 
 ---
 
 ### 5. Resumo Padronizado de Fechamento da Etapa 5 (Protocolo Obrigatório)
 
-- **Etapa e estado:** Etapa 5 (E2: H3 — Remoção Persistente) — **Concluída**.
+- **Etapa e estado:** Etapa 5 (E2: H3 — Remoção Persistente) — **Concluída e Auditada (Revisão Adversarial R1 - Fechamento Definitivo)**.
 - **Mudanças:** 
   - Implementação do método `removerPorId(String id)` em `JdbcEstoqueStorage` sob perfil `infra` com anotação `@Transactional`, executando comando SQL `DELETE FROM bolsas WHERE id_seq = (SELECT id_seq FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1)`, retornando `true` quando `rowsAffected > 0` e `false` quando ausente ou vazio.
   - Garantia de que a deleção remove exclusivamente a ocorrência de maior `id_seq` (mais recente / LIFO), preservando intactas quaisquer ocorrências anteriores cadastradas sob o mesmo identificador de negócio.
   - Implementação de guardas defensivas fail-fast em `removerPorId` para IDs nulos, em branco ou com mais de 50 caracteres (`VARCHAR(50)`), e propagação direta de `DataAccessException` sem fallback silencioso para memória.
+  - Adição de `removerPorId(String id)` em `ListaEstoque` (AED U1) e delegação explícita em `ListaEstoqueStorage` para `listaEstoque.removerPorId(id.trim())` (T3.1).
   - Adição de `removerBolsa(String id)` como alias de negócio em `EstoqueService` delegando para `remover(id)`.
-  - Integração do endpoint `DELETE /api/estoque/{id}` em `EstoqueController`, retornando status HTTP 200 com envelope JSON `{"mensagem": "Bolsa removida", "tamanho": N}` para sucesso e HTTP 404 Not Found para bolsa inexistente ou esgotada.
+  - Integração efetiva de `removerBolsa(id.trim())` no endpoint `DELETE /api/estoque/{id}` de `EstoqueController` (T3.3), retornando status HTTP 200 com envelope JSON `{"mensagem": "Bolsa removida", "tamanho": N}` para sucesso e HTTP 404 Not Found para bolsa inexistente ou esgotada.
   - Bateria completa de testes em 3 níveis (unitário, integração e aceitação), incluindo teste de persistência durável da exclusão após encerramento e recriação do contexto Spring (`BolsaPersistidaIT.deveManterRemocaoAposReinicioContexto`).
 - **Verificação:** 
-  - 165/165 testes Java aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~17.7s).
+  - 170/170 testes Java aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~29.0s).
   - 19/19 classes de testes compiladas sem falhas via `.\mvnw.cmd test-compile`.
-  - Sequência rastreável Red → Green comprovada no Git através dos commits semânticos (`test:` e `feat:`).
+  - Sequência rastreável Red → Green comprovada no Git através dos commits semânticos (`test:`, `feat:` e `fix:`).
   - 54/54 testes em C aprovados (23 na lista e 31 na fila da U1).
   - 7/7 testes de benchmarks em Python aprovados e verificação `--check` de 8 configurações consistente.
 - **Pendências:** 
