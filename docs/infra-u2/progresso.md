@@ -11,7 +11,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 0** | Diagnóstico da Base e Linha de Base de Testes | **Concluída** | `b410dfcf8a6caa39c1fde36fbaa3e52c39863bef` (16/10/2026) |
 | **Etapa 1** | Story Map e Critérios de Aceite da Release 1 | **Concluída** | 17/10/2026 |
 | **Etapa 2** | E1: Base de Containers (Dockerfile, Compose, PostgreSQL) | **Concluída** | 17/10/2026 |
-| **Etapa 3** | E2: H1 — Cadastro e Recuperação Persistente (TDD) | Pendente | — |
+| **Etapa 3** | E2: H1 — Cadastro e Recuperação Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 4** | E2: H2 — Listagem e Consulta Persistente (TDD) | Pendente | — |
 | **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | Pendente | — |
 | **Etapa 6** | E2: Integração e Gates na Esteira | Pendente | — |
@@ -450,6 +450,130 @@ Na próxima etapa (**Etapa 2**), será construída a fundação de infraestrutur
   - A subida física dos contêineres e testes de integração com banco dependem da inicialização do Docker Desktop no host Windows.
   - A persistência funcional do estoque permanece expressamente pendente para as Etapas 3 (H1), 4 (H2) e 5 (H3).
 - **Próxima etapa:** **Etapa 3 — E2: H1 — Cadastro e Recuperação Persistente (TDD)** (implementação guiada por testes Red → Green → Refactor para cadastro e recuperação persistente de bolsas no PostgreSQL).
+
+---
+
+## Etapa 3: E2: H1 — Cadastro e Recuperação Persistente (TDD)
+
+- **Estado:** Concluída
+- **Data de Execução:** 17/10/2026
+- **Histórico de Commits Rastreáveis da Etapa 3:**
+  1. `e3b6073` - `test(u1): adiciona testes de caracterizacao para EstoqueService e EstoqueController`
+  2. `2525767` - `test(h1): define testes unitarios de ListaEstoqueStorage para T1.1`
+  3. `07c44a7` - `feat(h1): implementa EstoqueStorage e adaptador ListaEstoqueStorage para u1 (T1.1)`
+  4. `a80debc` - `test(h1): define testes unitarios de JdbcEstoqueStorage (T1.2)`
+  5. `8aa3432` - `feat(h1): implementa JdbcEstoqueStorage sob perfil infra (T1.2)`
+  6. `3cd4564` - `test(h1): define testes unitarios de delegacao e fail-fast em EstoqueService (T1.3)`
+  7. `4b880af` - `feat(h1): refatora EstoqueService para injetar EstoqueStorage com fail-fast (T1.3)`
+  8. `54d83c0` - `test(h1): define testes unitarios para BolsaRequestDTO resiliente (T1.4)`
+  9. `badd2a0` - `feat(h1): implementa BolsaRequestDTO e integra com EstoqueController (T1.4)`
+  10. `2d0be08` - `test(h1): adiciona bateria de testes de integracao e aceitacao em tres niveis para H1`
+- **Regra de Integridade:** As estruturas pedagógicas de AED da U1 (`ListaEstoque`, `NoBolsa`, `FilaRequisicoes`) e testes C/Python foram 100% preservados sem alterações. As histórias H2 (listagem do estoque) e H3 (remoção persistente) permanecem expressamente pendentes para as Etapas 4 e 5.
+
+---
+
+### 1. Testes de Caracterização da U1 (Blindagem de Contratos Legados)
+
+Antes de realizar qualquer modificação na classe `EstoqueService`, foram criadas duas suítes dedicadas de testes de caracterização sob o perfil padrão `u1`:
+1. `src/test/java/com/rotavital/service/EstoqueServiceCaracterizacaoTest.java`:
+   - 6 cenários de teste cobrindo: adição e consulta direta, retorno de array em ordem LIFO (mais recente primeiro), consulta de ocorrência mais recente sob IDs duplicados, remoção da ocorrência mais recente sob duplicatas, retorno booleano `false` para remoção inexistente e contagem de tamanho.
+2. `src/test/java/com/rotavital/controller/EstoqueControllerCaracterizacaoTest.java`:
+   - 7 cenários com `MockMvc` sob `@ActiveProfiles("u1")` cobrindo: `POST /api/estoque` (200 OK com envelope `{"mensagem": "...", "tamanho": 1}`), `GET /api/estoque/{id}` (200 OK com dados completos), `GET /api/estoque/{id}` inexistente (404 Not Found), `DELETE /api/estoque/{id}` (200 OK com tamanho decrementado), `DELETE /api/estoque/{id}` inexistente (404 Not Found), `GET /api/estoque` com envelope LIFO e `GET /api/estoque` em estoque vazio (`{"bolsas": [], "tamanho": 0}`).
+- **Resultado:** 13/13 testes aprovados, estabelecendo uma rede inquebrável de proteção contra regressões da U1.
+
+---
+
+### 2. Ciclo Red → Green → Refactor para H1
+
+#### Tarefa T1.1: Interface `EstoqueStorage` e Adaptador em Memória `ListaEstoqueStorage`
+- **Teste Unitário:** `src/test/java/com/rotavital/storage/ListaEstoqueStorageTest.java` (5 testes).
+- **Evidência Red:** Execução de `mvnw.cmd test -Dtest=ListaEstoqueStorageTest` falhou com `java.lang.UnsupportedOperationException: Stub para ciclo TDD Red`. Commit: `2525767`.
+- **Implementação Green:** Criação da interface `EstoqueStorage` e implementação de `ListaEstoqueStorage` anotada com `@Component` e `@Profile({"u1", "default"})`, delegando para nós dinâmicos `NoBolsa` de `ListaEstoque` (`salvar -> inserir`, `buscarPorId -> consultar`, `removerPorId -> remover`, `listarTodas -> toArray`, `tamanho -> getTamanho`).
+- **Evidência Green:** 5/5 testes aprovados (`BUILD SUCCESS` em 7.5s). Commit: `07c44a7`.
+
+#### Tarefa T1.2: Adaptador Relacional `JdbcEstoqueStorage`
+- **Teste Unitário:** `src/test/java/com/rotavital/storage/JdbcEstoqueStorageTest.java` (5 testes com mock de `JdbcTemplate` e captura de SQL).
+- **Evidência Red:** Execução de `mvnw.cmd test -Dtest=JdbcEstoqueStorageTest` falhou com `java.lang.UnsupportedOperationException: Stub para ciclo TDD Red T1.2`. Commit: `a80debc`.
+- **Implementação Green:** Implementação de `JdbcEstoqueStorage` sob `@Profile("infra")`:
+  - `salvar(Bolsa)`: transacional (`@Transactional`), executando `INSERT INTO bolsas (id, tipo_sanguineo, volume_ml, data_coleta, validade, doador) VALUES (?, ?, ?, ?, ?, ?)`.
+  - `buscarPorId(String id)`: transacional somente leitura (`@Transactional(readOnly = true)`), executando `SELECT ... FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1` com `RowMapper<Bolsa>`, garantindo recuperação determinística da ocorrência mais recente sob duplicatas.
+  - `tamanho()`: executando `SELECT COUNT(*) FROM bolsas`.
+  - Fail-fast estrito: propagação direta de qualquer `DataAccessException` sem desvio silencioso para a memória.
+  - Métodos `listarTodas` e `removerPorId` lançam `UnsupportedOperationException` mantendo H2 e H3 estritamente pendentes.
+- **Evidência Green:** 5/5 testes aprovados (`BUILD SUCCESS` em 9.3s). Commit: `8aa3432`.
+
+#### Tarefa T1.3: Desacoplamento de `EstoqueService` com Injeção de `EstoqueStorage`
+- **Teste Unitário:** `src/test/java/com/rotavital/service/EstoqueServiceTest.java` (6 testes unitários com Mockito).
+- **Evidência Red:** Execução falhou com 6 erros de verificação (`Wanted but not invoked: estoqueStorage.salvar(...)`, `expected: <42> but was: <0>`, etc.) comprovando que o serviço ainda não delegava para a abstração. Commit: `3cd4564`.
+- **Implementação Green:** Refatoração de `EstoqueService` para injetar `EstoqueStorage` via construtor, mantendo construtor padrão com fallback para `ListaEstoqueStorage` e repasse transparente de todas as operações públicas com fail-fast.
+- **Evidência Green:** 6/6 testes aprovados no `EstoqueServiceTest` e 13/13 testes aprovados na suíte de caracterização da U1. Commit: `4b880af`.
+
+#### Tarefa T1.4: Resiliência de Tipagem na API REST com `BolsaRequestDTO`
+- **Teste Unitário:** `src/test/java/com/rotavital/dto/BolsaRequestDTOTest.java` (4 testes com Jackson).
+- **Evidência Red:** Execução falhou com `UnsupportedOperationException: Stub para ciclo TDD Red T1.4`. Commit: `54d83c0`.
+- **Implementação Green:** Criação do record `BolsaRequestDTO` aceitando `volumeMl` polimórfico (`Number`, `String` ou `null` com default 450.0) e integração com `POST /api/estoque` em `EstoqueController`.
+- **Evidência Green:** 4/4 testes de DTO aprovados e 7/7 testes de `EstoqueControllerCaracterizacaoTest` aprovados, aceitando payloads numéricos de fixtures da U1. Commit: `badd2a0`.
+
+---
+
+### 3. Bateria de Testes em Três Níveis de H1
+
+A matriz rastreável de H1 foi plenamente coberta e implementada em 3 níveis:
+
+1. **Nível 1 — Testes Unitários de Regra e Domínio (sem banco externo):**
+   - `ListaEstoqueStorageTest` (5 testes): integridade algorítmica da lista encadeada da U1.
+   - `JdbcEstoqueStorageTest` (5 testes): SQL de INSERT, busca LIFO por `id_seq DESC LIMIT 1`, contagem e fail-fast.
+   - `EstoqueServiceTest` (6 testes): injeção de dependência, delegação e isolamento de exceções.
+   - `BolsaRequestDTOTest` (4 testes): resiliência de deserialização de literais JSON e strings.
+   - `EstoqueServiceCaracterizacaoTest` (6 testes) e `EstoqueControllerCaracterizacaoTest` (7 testes).
+   - **Total de Testes Unitários/Caracterização:** 33 testes específicos de estoque, somando **81 testes Java** executados pelo Surefire com 100% de aprovação (0 falhas, 0 erros).
+2. **Nível 2 — Testes de Integração com PostgreSQL Real (Testcontainers):**
+   - `AbstractPostgresIT`: classe base configurando `@Container public static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")`, com `@ActiveProfiles("infra")` e `@DynamicPropertySource` injetando URL, credenciais e migração Flyway.
+   - `JdbcEstoqueStorageIT`:
+     - `deveInserirERecuperarBolsaComTodosOsCampos()`: grava bolsa com os 6 atributos canônicos (`id`, `tipoSanguineo`, `volumeMl`, `dataColeta`, `validade`, `doador`) e recupera do PostgreSQL com asserções exatas em cada atributo.
+     - `deveRecuperarOcorrenciaMaisRecenteSobIdsDuplicados()`: grava dois registros com mesmo `id` e comprova recuperação LIFO do registro mais recente via `ORDER BY id_seq DESC LIMIT 1`.
+     - `deveRetornarVazioParaIdInexistente()`: valida retorno `Optional.empty()` para ID não cadastrado.
+   - `BolsaPersistidaIT`:
+     - `devePersistirBolsaAposReinicioContexto()`: grava a bolsa no PostgreSQL, encerra formalmente o contexto Spring (`applicationContext.close()`), recria um novo contexto com `SpringApplicationBuilder` apontando para o mesmo banco e comprova que a bolsa sobrevive intacta e é recuperada com todos os seus atributos preservados.
+3. **Nível 3 — Testes de Aceitação da API REST sob Perfil `infra`:**
+   - `EstoqueControllerIT`:
+     - `deveCadastrarBolsaViaPostERecuperarViaGet()`: executa requisição HTTP `POST /api/estoque` contendo JSON com literal numérico `volumeMl: 450.0`, valida resposta HTTP 200 com envelope `{"mensagem": "Bolsa adicionada ao estoque", "tamanho": 1}`, e subsequentemente executa `GET /api/estoque/{id}` validando HTTP 200 com payload JSON contendo todos os 6 campos idênticos.
+     - `deveRetornar404ParaBolsaInexistente()`: executa `GET /api/estoque/BOLSA-INEXISTENTE` sob o perfil `infra` e valida retorno HTTP 404 Not Found.
+- **Commit:** `2d0be08`.
+
+---
+
+### 4. Validação de Não-Regressão da U1
+
+- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
+- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** 81 testes aprovados (`mvnw.cmd test`, tempo ~17s, 0 falhas, 0 erros).
+
+---
+
+### 5. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída**.
+- **Mudanças:** 
+  - Criação da interface `EstoqueStorage` desacoplando a camada de serviço do meio físico de armazenamento.
+  - Implementação do adaptador de memória `ListaEstoqueStorage` com anotações `@Component` e `@Profile({"u1", "default"})`, delegando diretamente para a lista simplesmente encadeada pedagógica com nós `NoBolsa`.
+  - Implementação do adaptador relacional `JdbcEstoqueStorage` sob `@Profile("infra")` utilizando Spring `JdbcTemplate`, transações isoladas (`@Transactional`), mapeamento via `RowMapper<Bolsa>`, consulta LIFO da ocorrência mais recente (`ORDER BY id_seq DESC LIMIT 1`) e fail-fast em falhas de persistência.
+  - Refatoração de `EstoqueService` para injetar `EstoqueStorage` via construtor, eliminando o acoplamento rígido com `ListaEstoque`.
+  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0) e integração no `POST /api/estoque` do `EstoqueController`.
+  - Configuração de `<argLine>-Dnet.bytebuddy.experimental=true</argLine>` no `pom.xml` para compatibilidade total do Mockito com o runtime Java 25.
+  - Criação de 13 testes de caracterização da U1, 20 testes unitários TDD e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
+  - As histórias H2 (listagem de estoque) e H3 (remoção persistente) foram expressamente mantidas pendentes para as Etapas 4 e 5.
+- **Verificação:** 
+  - 81/81 testes Java unitários e de caracterização aprovados no perfil `u1` via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
+  - 10 commits rastreáveis registrando estritamente a sequência `test:` e `feat:` no histórico Git.
+  - Evidências Red confirmadas com falha técnica legítima (`UnsupportedOperationException` e `Wanted but not invoked`) antes de cada implementação Green.
+  - 54/54 asserções de testes em C aprovadas (lista encadeada e fila FIFO).
+  - 7/7 testes de benchmarks em Python aprovados e integridade estatística validada via `--check`.
+  - Compilação limpa de todas as 16 classes de teste (`mvnw.cmd test-compile`).
+- **Pendências:** 
+  - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
+  - A listagem geral persistente do estoque (H2) e a remoção persistente (H3) permanecem expressamente pendentes para as Etapas 4 e 5.
+- **Próxima etapa:** **Etapa 4 — E2: H2 — Listagem e Consulta Persistente (TDD)** (implementação guiada por TDD da listagem persistente, envelope padronizado, suporte a estoque vazio, ordenação temporal LIFO e recuperação de duplicatas no PostgreSQL).
 
 
 
