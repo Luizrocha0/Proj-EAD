@@ -97,14 +97,16 @@ public class EstoqueController {
         var lista = new java.util.ArrayList<Map<String, Object>>();
         if (bolsas != null) {
             for (Bolsa b : bolsas) {
-                lista.add(Map.of(
-                        "id", b.getId(),
-                        "tipoSanguineo", b.getTipoSanguineo(),
-                        "volumeMl", b.getVolumeMl(),
-                        "dataColeta", b.getDataColeta().toString(),
-                        "validade", b.getValidade().toString(),
-                        "doador", b.getDoador()
-                ));
+                if (b != null) {
+                    lista.add(Map.of(
+                            "id", b.getId(),
+                            "tipoSanguineo", b.getTipoSanguineo(),
+                            "volumeMl", b.getVolumeMl(),
+                            "dataColeta", b.getDataColeta().toString(),
+                            "validade", b.getValidade().toString(),
+                            "doador", b.getDoador()
+                    ));
+                }
             }
         }
         return ResponseEntity.ok(Map.of(

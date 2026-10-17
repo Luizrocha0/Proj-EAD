@@ -137,6 +137,10 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
             assertEquals("Doador Inicial", bolsasAposReinicio.get(2).getDoador());
 
             assertEquals(3, novoStorage.tamanho());
+
+            Optional<Bolsa> buscaDuplicata = novoStorage.buscarPorId("BOLSA-LIFO-01");
+            assertTrue(buscaDuplicata.isPresent(), "Busca pontual por ID duplicado deve funcionar pós-reinício");
+            assertEquals("Doador Recente (Duplicata)", buscaDuplicata.get().getDoador(), "Deve recuperar a ocorrência mais recente");
         }
     }
 }

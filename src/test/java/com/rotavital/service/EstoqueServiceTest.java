@@ -104,18 +104,20 @@ class EstoqueServiceTest {
     }
 
     @Test
-    @DisplayName("Adversarial: Deve retornar Optional vazio para id nulo ou em branco sem delegar ao storage")
+    @DisplayName("Adversarial: Deve retornar Optional vazio para id nulo, em branco ou excedendo 50 caracteres sem delegar ao storage")
     void deveRetornarVazioAoConsultarIdNuloOuEmBrancoSemDelegar() {
         assertTrue(service.consultar(null).isEmpty());
         assertTrue(service.consultar("   ").isEmpty());
+        assertTrue(service.consultar("A".repeat(51)).isEmpty());
         verifyNoInteractions(storage);
     }
 
     @Test
-    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo ou em branco sem delegar ao storage")
+    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo, em branco ou excedendo 50 caracteres sem delegar ao storage")
     void deveRetornarFalseAoRemoverIdNuloOuEmBrancoSemDelegar() {
         assertFalse(service.remover(null));
         assertFalse(service.remover("   "));
+        assertFalse(service.remover("A".repeat(51)));
         verifyNoInteractions(storage);
     }
 
