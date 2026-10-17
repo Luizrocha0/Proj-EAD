@@ -21,11 +21,17 @@ public record BolsaRequestDTO(
         if (idLimpo.isEmpty()) {
             throw new IllegalArgumentException("id não pode ser vazio");
         }
+        if (idLimpo.length() > 50) {
+            throw new IllegalArgumentException("id não pode exceder 50 caracteres");
+        }
 
         Objects.requireNonNull(tipoSanguineo, "tipoSanguineo não pode ser nulo");
         String tipoNormalizado = tipoSanguineo.replaceAll("\\s+", "").toUpperCase();
         if (tipoNormalizado.isEmpty()) {
             throw new IllegalArgumentException("tipoSanguineo não pode ser vazio");
+        }
+        if (tipoNormalizado.length() > 10) {
+            throw new IllegalArgumentException("tipoSanguineo não pode exceder 10 caracteres");
         }
 
         double volume = 450.0;
@@ -64,6 +70,9 @@ public record BolsaRequestDTO(
         String doadorLimpo = doador.trim();
         if (doadorLimpo.isEmpty()) {
             throw new IllegalArgumentException("doador não pode ser vazio");
+        }
+        if (doadorLimpo.length() > 255) {
+            throw new IllegalArgumentException("doador não pode exceder 255 caracteres");
         }
 
         return new Bolsa(
