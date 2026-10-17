@@ -59,7 +59,17 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     @Override
     @Transactional
     public boolean removerPorId(String id) {
-        throw new UnsupportedOperationException("Pendente para Etapa 5 (H3)");
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
+            return false;
+        }
+        String sql = """
+            DELETE FROM bolsas
+            WHERE id_seq = (
+                SELECT id_seq FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1
+            )
+            """;
+        int linhasAfetadas = jdbcTemplate.update(sql, id.trim());
+        return linhasAfetadas > 0;
     }
 
     @Override
