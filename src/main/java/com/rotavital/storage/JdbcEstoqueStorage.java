@@ -3,8 +3,12 @@ package com.rotavital.storage;
 import com.rotavital.domain.Bolsa;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -18,27 +22,61 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     }
 
     @Override
+    @Transactional
     public void salvar(Bolsa bolsa) {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red T1.2");
+        String sql = """
+            INSERT INTO bolsas (id, tipo_sanguineo, volume_ml, data_coleta, validade, doador)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """;
+        jdbcTemplate.update(sql,
+                bolsa.getId(),
+                bolsa.getTipoSanguineo(),
+                bolsa.getVolumeMl(),
+                Date.valueOf(bolsa.getDataColeta()),
+                Date.valueOf(bolsa.getValidade()),
+                bolsa.getDoador()
+        );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Bolsa> buscarPorId(String id) {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red T1.2");
+        String sql = """
+            SELECT id, tipo_sanguineo, volume_ml, data_coleta, validade, doador
+            FROM bolsas
+            WHERE id = ?
+            ORDER BY id_seq DESC
+            LIMIT 1
+            """;
+        List<Bolsa> resultados = jdbcTemplate.query(sql, bolsaRowMapper, id);
+        return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
     }
 
     @Override
+    @Transactional
     public boolean removerPorId(String id) {
         throw new UnsupportedOperationException("Pendente para Etapa 5 (H3)");
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Bolsa[] listarTodas() {
         throw new UnsupportedOperationException("Pendente para Etapa 4 (H2)");
     }
 
     @Override
+    @Transactional(readOnly = true)
     public int tamanho() {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red T1.2");
+        Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM bolsas", Integer.class);
+        return total != null ? total : 0;
     }
+
+    private final RowMapper<Bolsa> bolsaRowMapper = (rs, rowNum) -> new Bolsa(
+            rs.getString("id"),
+            rs.getString("tipo_sanguineo"),
+            rs.getDouble("volume_ml"),
+            rs.getDate("data_coleta").toLocalDate(),
+            rs.getDate("validade").toLocalDate(),
+            rs.getString("doador")
+    );
 }
