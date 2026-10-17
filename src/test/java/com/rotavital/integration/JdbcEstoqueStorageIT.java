@@ -147,4 +147,60 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
         Optional<Bolsa> resultado = storage.buscarPorId("' OR '1'='1");
         assertTrue(resultado.isEmpty());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para ID com mais de 50 caracteres sem erro SQL")
+    void deveRetornarVazioParaIdExcedendo50Caracteres() {
+        String idGigante = "A".repeat(51);
+        Optional<Bolsa> resultado = storage.buscarPorId(idGigante);
+        assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    @DisplayName("H1 / Concorrência: Deve tratar inserções concorrentes sob mesma chave de negócio garantindo monotonicidade LIFO")
+    void deveTratarInsercoesConcorrentesGarantindoMonotonicidadeLifo() throws Exception {
+        int numThreads = 10;
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads);
+        java.util.concurrent.CountDownLatch latchInicio = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch latchFim = new java.util.concurrent.CountDownLatch(numThreads);
+        java.util.concurrent.atomic.AtomicInteger erros = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        String idComum = "BOLSA-CONCORRENTE";
+
+        for (int i = 0; i < numThreads; i++) {
+            final int idx = i;
+            executor.submit(() -> {
+                try {
+                    latchInicio.await();
+                    Bolsa b = criarBolsa(
+                            idComum,
+                            "O+",
+                            400.0 + idx,
+                            LocalDate.of(2026, 9, 1),
+                            LocalDate.of(2026, 11, 1),
+                            "Doador Concorrente #" + idx
+                    );
+                    storage.salvar(b);
+                } catch (Exception e) {
+                    erros.incrementAndGet();
+                } finally {
+                    latchFim.countDown();
+                }
+            });
+        }
+
+        // Libera todas as threads simultaneamente
+        latchInicio.countDown();
+        boolean concluiu = latchFim.await(10, java.util.concurrent.TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertTrue(concluiu, "Todas as threads concorrentes devem concluir a tempo");
+        assertEquals(0, erros.get(), "Nenhum erro deve ocorrer durante inserções concorrentes");
+        assertEquals(numThreads, storage.tamanho(), "Todas as 10 bolsas devem ser persistidas no PostgreSQL");
+
+        Optional<Bolsa> recuperada = storage.buscarPorId(idComum);
+        assertTrue(recuperada.isPresent());
+        assertTrue(recuperada.get().getDoador().startsWith("Doador Concorrente #"),
+                "A bolsa recuperada deve corresponder a uma das inserções concorrentes confirmadas");
+    }
 }

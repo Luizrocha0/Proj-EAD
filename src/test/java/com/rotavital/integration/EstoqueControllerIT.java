@@ -140,4 +140,25 @@ class EstoqueControllerIT extends AbstractPostgresIT {
                 .andExpect(jsonPath("$.id", is("BOLSA_UTF8-02/2026")))
                 .andExpect(jsonPath("$.doador", is("José da Conceição Araújo & Cia")));
     }
+
+    @Test
+    @DisplayName("H1 / Aceitação: POST com id excedendo 50 caracteres sob perfil infra deve retornar 400 Bad Request prevenindo erro 500 do PostgreSQL")
+    void deveRetornar400ParaIdExcedendo50SobPerfilInfra() throws Exception {
+        String jsonIdLongo = """
+            {
+                "id": "%s",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """.formatted("B".repeat(51));
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonIdLongo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", org.hamcrest.Matchers.containsString("id não pode exceder 50 caracteres")));
+    }
 }

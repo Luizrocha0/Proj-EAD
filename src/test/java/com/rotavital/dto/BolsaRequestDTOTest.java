@@ -203,4 +203,43 @@ class BolsaRequestDTOTest {
         assertEquals("O+", bolsa.getTipoSanguineo());
         assertEquals("José da Conceição Araújo & Cia", bolsa.getDoador());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar id com mais de 50 caracteres e aceitar com exatamente 50")
+    void deveValidarLimiteMaximoId() {
+        String id50 = "B".repeat(50);
+        BolsaRequestDTO dtoValido = new BolsaRequestDTO(id50, "O+", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals(50, dtoValido.toDomain().getId().length());
+
+        String id51 = "B".repeat(51);
+        BolsaRequestDTO dtoInvalido = new BolsaRequestDTO(id51, "O+", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, dtoInvalido::toDomain);
+        assertTrue(ex.getMessage().contains("id não pode exceder 50 caracteres"));
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar tipoSanguineo com mais de 10 caracteres e aceitar com até 10")
+    void deveValidarLimiteMaximoTipoSanguineo() {
+        String tipo10 = "AB_POSITIV";
+        BolsaRequestDTO dtoValido = new BolsaRequestDTO("B-1", tipo10, 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals(10, dtoValido.toDomain().getTipoSanguineo().length());
+
+        String tipo11 = "AB_POSITIVO";
+        BolsaRequestDTO dtoInvalido = new BolsaRequestDTO("B-1", tipo11, 450.0, "2026-09-01", "2026-11-01", "Doador");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, dtoInvalido::toDomain);
+        assertTrue(ex.getMessage().contains("tipoSanguineo não pode exceder 10 caracteres"));
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar doador com mais de 255 caracteres e aceitar com exatamente 255")
+    void deveValidarLimiteMaximoDoador() {
+        String doador255 = "D".repeat(255);
+        BolsaRequestDTO dtoValido = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", "2026-11-01", doador255);
+        assertEquals(255, dtoValido.toDomain().getDoador().length());
+
+        String doador256 = "D".repeat(256);
+        BolsaRequestDTO dtoInvalido = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", "2026-11-01", doador256);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, dtoInvalido::toDomain);
+        assertTrue(ex.getMessage().contains("doador não pode exceder 255 caracteres"));
+    }
 }
