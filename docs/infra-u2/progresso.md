@@ -555,39 +555,58 @@ Uma auditoria adversarial e cética foi executada sobre a implementação inicia
 
 ---
 
-### 5. Validação de Não-Regressão da U1
+### 5. Auditoria Adversarial R2: Blindagem de Injeção Spring, Segregação H2/H3, SQL Injection e UTF-8
 
-- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
-- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **105 testes aprovados** (`mvnw.cmd test`, tempo ~18s, 0 falhas, 0 erros).
+Uma segunda rodada adversarial aprofundada foi realizada, revelando uma falha arquitetural silenciosa no Spring Framework e oportunidades críticas de blindagem:
+
+1. **Defeito Fatal de Injeção de Construtor no `EstoqueService` pelo Spring:**
+   - **Diagnóstico:** `EstoqueService` possuía dois construtores: `public EstoqueService()` (que instanciou `new ListaEstoqueStorage()`) e `public EstoqueService(EstoqueStorage storage)`. Contudo, **nenhum dos construtores possuía a anotação `@Autowired`**.
+   - **Causa Raiz:** Pelas regras do Spring 4.3+, a omissão de `@Autowired` só é permitida quando a classe possui **exatamente um** construtor. Na presença de múltiplos construtores sem `@Autowired`, o `AutowiredAnnotationBeanPostProcessor` do Spring recai silenciosamente sobre o construtor padrão no-arg. Como consequência, em tempo de execução no Spring Boot (tanto sob o perfil `u1` quanto sob o perfil `infra`), o Spring invocava o construtor sem argumentos, criando um `new ListaEstoqueStorage()` em memória desvinculado e **ignorando completamente o bean gerenciado `JdbcEstoqueStorage`**!
+   - **Correção:** Adicionou-se `@Autowired` explícito ao construtor `public EstoqueService(EstoqueStorage storage)` e expôs-se o método de inspeção `getStorage()`.
+   - **Comprovação por Testes:** Criou-se `EstoqueServiceU1ProfileInjectionTest` e `EstoqueServiceInfraProfileInjectionTest`, validando que o Spring Boot injeta estritamente `ListaEstoqueStorage` no perfil `u1` e `JdbcEstoqueStorage` no perfil `infra`, sem vazamento de estado.
+
+2. **Garantia de Segregação Estrita de H2 e H3:**
+   - Adicionaram-se testes explícitos em `JdbcEstoqueStorageTest` e `JdbcEstoqueStorageIT` comprovando que `storage.listarTodas()` lança `UnsupportedOperationException("Pendente para Etapa 4 (H2)")` e `storage.removerPorId(id)` lança `UnsupportedOperationException("Pendente para Etapa 5 (H3)")`, blindando o sistema contra vazamento prematuro de escopo das próximas etapas.
+
+3. **Resiliência a Tentativas de SQL Injection:**
+   - Adicionaram-se testes em `JdbcEstoqueStorageTest` e `JdbcEstoqueStorageIT` comprovando que queries maliciosas como `"' OR '1'='1"` e payloads DDL como `"; DROP TABLE bolsas; --"` são vinculados de forma segura como parâmetros literais pelo `PreparedStatement` do `JdbcTemplate`, sem quebras de sintaxe nem execução indevida.
+
+4. **Preservação de Encoding UTF-8 com Acentuação e Símbolos em IDs e Doador:**
+   - Adicionaram-se testes em `BolsaRequestDTOTest`, `EstoqueControllerCaracterizacaoTest`, `JdbcEstoqueStorageTest`, `JdbcEstoqueStorageIT` e `EstoqueControllerIT` comprovando a preservação estrita de caracteres com acentos (`"José da Conceição Araújo & Cia"`) e identificadores alfanuméricos com hífens e barras (`"BOLSA_UTF8-01/2026"`).
+
+- **Expansão da Suíte de Testes:** A suíte Java saltou de **105** para **113 testes aprovados com 100% de sucesso** no Surefire (`mvnw.cmd test`, tempo ~21s, 0 falhas, 0 erros).
 
 ---
 
-### 6. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+### 6. Validação de Não-Regressão da U1
 
-- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída e Blindada**.
+- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
+- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** **113 testes aprovados** (`mvnw.cmd test`, tempo ~21s, 0 falhas, 0 erros).
+
+---
+
+### 7. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída e Auditada (R2)**.
 - **Mudanças:** 
   - Criação da interface `EstoqueStorage` desacoplando a camada de serviço do meio físico de armazenamento.
   - Implementação do adaptador de memória `ListaEstoqueStorage` com anotações `@Component` e `@Profile({"u1", "default"})`, delegando diretamente para a lista simplesmente encadeada pedagógica com nós `NoBolsa`.
   - Implementação do adaptador relacional `JdbcEstoqueStorage` sob `@Profile("infra")` utilizando Spring `JdbcTemplate`, transações isoladas (`@Transactional`), mapeamento via `RowMapper<Bolsa>`, consulta LIFO da ocorrência mais recente (`ORDER BY id_seq DESC LIMIT 1`) e fail-fast em falhas de persistência.
-  - Refatoração de `EstoqueService` para injetar `EstoqueStorage` via construtor, eliminando o acoplamento rígido com `ListaEstoque`.
-  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0), com normalização de tipos sanguíneos (`AB+`, `O+`), validação de campos vazios/em branco, volume positivo e consistência temporal de validade.
+  - Refatoração de `EstoqueService` com injeção `@Autowired` de `EstoqueStorage`, garantindo amarração correta do bean de persistência sob o perfil `infra` e mantendo construtor padrão para caracterização legada.
+  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0), com normalização de tipos sanguíneos (`AB+`, `O+`), validação de campos vazios/em branco, volume positivo, consistência temporal de validade e preservação de UTF-8.
   - Tratamento resiliente de validações em `EstoqueController` respondendo com HTTP 400 Bad Request.
   - Configuração de `<argLine>-Dnet.bytebuddy.experimental=true</argLine>` no `pom.xml` para compatibilidade total do Mockito com o runtime Java 25.
-  - Suíte expandida com 13 testes de caracterização legados, 44 testes unitários TDD/adversariais e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
-  - As histórias H2 (listagem de estoque) e H3 (remoção persistente) foram expressamente mantidas pendentes para as Etapas 4 e 5.
+  - Suíte expandida com 13 testes de caracterização legados, 52 testes unitários TDD/adversariais e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
+  - As histórias H2 (listagem de estoque) e H3 (remoção persistente) foram expressamente mantidas pendentes para as Etapas 4 e 5, com testes comprovando lançamento de `UnsupportedOperationException`.
 - **Verificação:** 
-  - 105/105 testes Java unitários e de caracterização aprovados no perfil `u1` via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
+  - 113/113 testes Java unitários, de caracterização e de injeção de perfis aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
   - Commits rastreáveis registrando estritamente a sequência `test:` e `feat:` no histórico Git.
-  - Evidências Red confirmadas com falha técnica legítima (`UnsupportedOperationException` e `Wanted but not invoked`) antes de cada implementação Green.
+  - Evidências Red confirmadas com falha técnica legítima (`UnsupportedOperationException` e `AssertionFailedError`) antes de cada implementação Green.
   - 54/54 asserções de testes em C aprovadas (lista encadeada e fila FIFO).
   - 7/7 testes de benchmarks em Python aprovados e integridade estatística validada via `--check`.
-  - Compilação limpa de todas as 16 classes de teste (`mvnw.cmd test-compile`).
+  - Compilação limpa de todas as 18 classes de teste (`mvnw.cmd test-compile`).
 - **Pendências:** 
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
   - A listagem geral persistente do estoque (H2) e a remoção persistente (H3) permanecem expressamente pendentes para as Etapas 4 e 5.
 - **Próxima etapa:** **Etapa 4 — E2: H2 — Listagem e Consulta Persistente (TDD)** (implementação guiada por TDD da listagem persistente, envelope padronizado, suporte a estoque vazio, ordenação temporal LIFO e recuperação de duplicatas no PostgreSQL).
-
-
-
-
