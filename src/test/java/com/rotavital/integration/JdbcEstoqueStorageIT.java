@@ -218,6 +218,50 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
     }
 
     @Test
+    @DisplayName("H3 / T3.3: Deve esgotar tripla duplicata no PostgreSQL através de remoções atômicas sucessivas")
+    void deveRemoverSucessivamenteTriplaDuplicataNoPostgreSql() {
+        Bolsa b1 = criarBolsa("BOLSA-TRIPLA-PG", "O+", 400.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador 1");
+        Bolsa b2 = criarBolsa("BOLSA-TRIPLA-PG", "O+", 430.0, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 11, 2), "Doador 2");
+        Bolsa b3 = criarBolsa("BOLSA-TRIPLA-PG", "O+", 460.0, LocalDate.of(2026, 9, 3), LocalDate.of(2026, 11, 3), "Doador 3");
+
+        storage.salvar(b1);
+        storage.salvar(b2);
+        storage.salvar(b3);
+        assertEquals(3, storage.tamanho());
+
+        // 1ª remoção: elimina Doador 3
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA-PG"));
+        assertEquals(2, storage.tamanho());
+        assertEquals("Doador 2", storage.buscarPorId("BOLSA-TRIPLA-PG").orElseThrow().getDoador());
+
+        // 2ª remoção: elimina Doador 2
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA-PG"));
+        assertEquals(1, storage.tamanho());
+        assertEquals("Doador 1", storage.buscarPorId("BOLSA-TRIPLA-PG").orElseThrow().getDoador());
+
+        // 3ª remoção: elimina Doador 1
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA-PG"));
+        assertEquals(0, storage.tamanho());
+        assertTrue(storage.buscarPorId("BOLSA-TRIPLA-PG").isEmpty());
+
+        // 4ª remoção: esgotado
+        assertFalse(storage.removerPorId("BOLSA-TRIPLA-PG"));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2 / Defensivo: Deve remover bolsa com ID de exatamente 50 caracteres no PostgreSQL")
+    void deveRemoverBolsaComExatamente50CaracteresNoPostgreSql() {
+        String id50 = "B".repeat(50);
+        Bolsa bolsa = criarBolsa(id50, "O+", 450.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador 50 chars");
+        storage.salvar(bolsa);
+        assertEquals(1, storage.tamanho());
+
+        assertTrue(storage.removerPorId(id50));
+        assertEquals(0, storage.tamanho());
+        assertTrue(storage.buscarPorId(id50).isEmpty());
+    }
+
+    @Test
     @DisplayName("H3 / T3.2: Deve retornar false para remoção com id nulo, em branco ou excedendo 50 caracteres sem erro SQL")
     void deveRetornarFalseParaIdNuloEmBrancoOuExcedendo50CaracteresEmRemoverPorId() {
         assertFalse(storage.removerPorId(null));

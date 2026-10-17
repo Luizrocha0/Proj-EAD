@@ -216,5 +216,65 @@ class ListaEstoqueStorageTest {
         assertEquals(0, storage.tamanho());
         assertTrue(storage.buscarPorId(idUtf8).isEmpty());
     }
+
+    @Test
+    @DisplayName("H3 / T3.1 / Defensivo: Deve remover com sucesso ID com exatamente 50 caracteres e tratar espaços via trim")
+    void deveRemoverComSucessoIdComExatamente50CaracteresEmMemoria() {
+        String idExato50 = "A".repeat(50);
+        storage.salvar(criarBolsa(idExato50, "O+", 450.0, "Doador 50 chars"));
+        assertEquals(1, storage.tamanho());
+
+        // Deve remover com o ID exato
+        assertTrue(storage.removerPorId(idExato50));
+        assertEquals(0, storage.tamanho());
+
+        // Deve remover com ID de 50 chars envolvido em espaços (trim válido)
+        storage.salvar(criarBolsa(idExato50, "O+", 450.0, "Doador 50 chars"));
+        assertEquals(1, storage.tamanho());
+        assertTrue(storage.removerPorId("   " + idExato50 + "   "));
+        assertEquals(0, storage.tamanho());
+    }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve esgotar tripla duplicata em memória através de remoções sucessivas LIFO")
+    void deveEsgotarTriplaDuplicataEmMemoriaComRemocoesSucessivas() {
+        storage.salvar(criarBolsa("BOLSA-TRIPLA", "O+", 400.0, "Doador 1 (Antigo)"));
+        storage.salvar(criarBolsa("BOLSA-TRIPLA", "O+", 430.0, "Doador 2 (Meio)"));
+        storage.salvar(criarBolsa("BOLSA-TRIPLA", "O+", 460.0, "Doador 3 (Recente)"));
+        assertEquals(3, storage.tamanho());
+
+        // 1ª remoção: elimina Doador 3
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA"));
+        assertEquals(2, storage.tamanho());
+        assertEquals("Doador 2 (Meio)", storage.buscarPorId("BOLSA-TRIPLA").orElseThrow().getDoador());
+
+        // 2ª remoção: elimina Doador 2
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA"));
+        assertEquals(1, storage.tamanho());
+        assertEquals("Doador 1 (Antigo)", storage.buscarPorId("BOLSA-TRIPLA").orElseThrow().getDoador());
+
+        // 3ª remoção: elimina Doador 1
+        assertTrue(storage.removerPorId("BOLSA-TRIPLA"));
+        assertEquals(0, storage.tamanho());
+        assertTrue(storage.buscarPorId("BOLSA-TRIPLA").isEmpty());
+
+        // 4ª remoção: esgotado, deve retornar false
+        assertFalse(storage.removerPorId("BOLSA-TRIPLA"));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve isolar remoção entre IDs que compartilham prefixos comuns em memória")
+    void deveIsolarRemocaoEntreIdsComPrefixosComunsEmMemoria() {
+        storage.salvar(criarBolsa("BOLSA-001", "O+", 450.0, "Doador Exato"));
+        storage.salvar(criarBolsa("BOLSA-0010", "A+", 420.0, "Doador Prefixo Longo"));
+        storage.salvar(criarBolsa("BOLSA-001-A", "B+", 410.0, "Doador Sufixo Hifen"));
+        assertEquals(3, storage.tamanho());
+
+        assertTrue(storage.removerPorId("BOLSA-001"));
+        assertEquals(2, storage.tamanho());
+        assertTrue(storage.buscarPorId("BOLSA-001").isEmpty());
+        assertTrue(storage.buscarPorId("BOLSA-0010").isPresent());
+        assertTrue(storage.buscarPorId("BOLSA-001-A").isPresent());
+    }
 }
 

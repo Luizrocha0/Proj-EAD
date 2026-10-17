@@ -286,5 +286,21 @@ class EstoqueControllerTest {
         assertEquals(3, response.getBody().get("tamanho"));
         verify(estoqueService, times(1)).removerBolsa(idUtf8);
     }
+
+    @Test
+    @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} com ID de exatamente 50 caracteres deve remover com sucesso")
+    void deveRemoverBolsaComExatamente50CaracteresComSucesso() {
+        String id50 = "B".repeat(50);
+        when(estoqueService.removerBolsa(id50)).thenReturn(true);
+        when(estoqueService.tamanho()).thenReturn(4);
+
+        ResponseEntity<Map<String, Object>> response = controller.remover(id50);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Bolsa removida", response.getBody().get("mensagem"));
+        assertEquals(4, response.getBody().get("tamanho"));
+        verify(estoqueService, times(1)).removerBolsa(id50);
+    }
 }
 
