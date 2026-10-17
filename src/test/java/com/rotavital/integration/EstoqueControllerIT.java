@@ -10,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -160,5 +160,92 @@ class EstoqueControllerIT extends AbstractPostgresIT {
                 .content(jsonIdLongo))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.mensagem", org.hamcrest.Matchers.containsString("id não pode exceder 50 caracteres")));
+    }
+
+    @Test
+    @DisplayName("H2 / Aceitação: GET /api/estoque sob perfil infra deve retornar envelope com bolsas em ordem LIFO e tamanho")
+    void deveListarEstoqueComEnvelopeSobPerfilInfra() throws Exception {
+        String json1 = """
+            {
+                "id": "BOLSA-INFRA-01",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+        String json2 = """
+            {
+                "id": "BOLSA-INFRA-02",
+                "tipoSanguineo": "A-",
+                "volumeMl": 420.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Maria Souza"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(json1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(json2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(2)))
+                .andExpect(jsonPath("$.bolsas", hasSize(2)))
+                .andExpect(jsonPath("$.bolsas[0].id", is("BOLSA-INFRA-02")))
+                .andExpect(jsonPath("$.bolsas[0].doador", is("Maria Souza")))
+                .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-INFRA-01")))
+                .andExpect(jsonPath("$.bolsas[1].doador", is("João Silva")));
+    }
+
+    @Test
+    @DisplayName("H2 / Aceitação: GET /api/estoque sob perfil infra deve retornar envelope vazio quando banco limpo")
+    void deveRetornarEnvelopeVazioSobPerfilInfraQuandoEstoqueVazio() throws Exception {
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(0)))
+                .andExpect(jsonPath("$.bolsas", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("H2 / Aceitação: GET /api/estoque sob perfil infra deve listar todas as ocorrências de IDs duplicados")
+    void deveListarMultiplasOcorrenciasDeIdsDuplicadosComEnvelope() throws Exception {
+        String jsonDup1 = """
+            {
+                "id": "BOLSA-DUP-REST",
+                "tipoSanguineo": "O+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador Antigo"
+            }
+            """;
+        String jsonDup2 = """
+            {
+                "id": "BOLSA-DUP-REST",
+                "tipoSanguineo": "O+",
+                "volumeMl": 460.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Doador Recente"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(2)))
+                .andExpect(jsonPath("$.bolsas", hasSize(2)))
+                .andExpect(jsonPath("$.bolsas[0].id", is("BOLSA-DUP-REST")))
+                .andExpect(jsonPath("$.bolsas[0].doador", is("Doador Recente")))
+                .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-DUP-REST")))
+                .andExpect(jsonPath("$.bolsas[1].doador", is("Doador Antigo")));
     }
 }

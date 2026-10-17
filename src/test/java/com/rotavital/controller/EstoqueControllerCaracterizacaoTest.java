@@ -137,6 +137,45 @@ class EstoqueControllerCaracterizacaoTest {
     }
 
     @Test
+    @DisplayName("H2 / Caracterização: GET /api/estoque deve listar múltiplas ocorrências de IDs duplicados em ordem LIFO sob perfil u1")
+    void deveListarMultiplasOcorrenciasDeIdsDuplicadosNoEnvelopeSobPerfilU1() throws Exception {
+        String jsonDup1 = """
+            {
+                "id": "BOLSA-DUP-U1",
+                "tipoSanguineo": "O+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador Antigo"
+            }
+            """;
+        String jsonDup2 = """
+            {
+                "id": "BOLSA-DUP-U1",
+                "tipoSanguineo": "O+",
+                "volumeMl": 460.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Doador Recente"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(2)))
+                .andExpect(jsonPath("$.bolsas", hasSize(2)))
+                .andExpect(jsonPath("$.bolsas[0].id", is("BOLSA-DUP-U1")))
+                .andExpect(jsonPath("$.bolsas[0].doador", is("Doador Recente")))
+                .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-DUP-U1")))
+                .andExpect(jsonPath("$.bolsas[1].doador", is("Doador Antigo")));
+    }
+
+    @Test
     @DisplayName("Adversarial: POST /api/estoque deve retornar 400 ao receber id ou doador vazio")
     void deveRetornar400AoAdicionarBolsaComCamposVazios() throws Exception {
         String jsonIdVazio = """

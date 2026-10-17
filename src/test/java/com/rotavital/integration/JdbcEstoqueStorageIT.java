@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -112,9 +113,56 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
     }
 
     @Test
-    @DisplayName("Segregação H2: Deve lançar UnsupportedOperationException ao chamar listarTodas pois H2 está pendente")
-    void deveLancarUnsupportedOperationExceptionAoListarTodas() {
-        assertThrows(UnsupportedOperationException.class, () -> storage.listarTodas());
+    @DisplayName("H2 / Integração: Deve listar bolsas em ordem LIFO (id_seq DESC) com PostgreSQL Real")
+    void deveListarBolsasEmOrdemLIFOComPostgreSqlReal() {
+        for (int i = 1; i <= 5; i++) {
+            storage.salvar(criarBolsa(
+                    "BOLSA-00" + i,
+                    "O+",
+                    400.0 + i * 10,
+                    LocalDate.of(2026, 9, i),
+                    LocalDate.of(2026, 11, i),
+                    "Doador #" + i
+            ));
+        }
+
+        List<Bolsa> resultado = storage.listar();
+        assertEquals(5, resultado.size());
+        assertEquals("BOLSA-005", resultado.get(0).getId());
+        assertEquals("BOLSA-004", resultado.get(1).getId());
+        assertEquals("BOLSA-003", resultado.get(2).getId());
+        assertEquals("BOLSA-002", resultado.get(3).getId());
+        assertEquals("BOLSA-001", resultado.get(4).getId());
+
+        Bolsa[] array = storage.listarTodas();
+        assertEquals(5, array.length);
+        assertEquals("BOLSA-005", array[0].getId());
+        assertEquals("BOLSA-001", array[4].getId());
+    }
+
+    @Test
+    @DisplayName("H2 / Integração: Deve retornar lista vazia sem erros quando tabela estiver limpa no PostgreSQL")
+    void deveRetornarListaVaziaQuandoEstoqueEstiverVazioNoPostgreSql() {
+        List<Bolsa> resultado = storage.listar();
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+        assertEquals(0, storage.tamanho());
+    }
+
+    @Test
+    @DisplayName("H2 / Integração: Deve listar todas as ocorrências de IDs duplicados em suas respectivas posições temporais")
+    void deveListarTodasOcorrenciasDeIdsDuplicadosEmSuasPosicoesTemporais() {
+        storage.salvar(criarBolsa("BOLSA-DUP", "O+", 400.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador Antigo"));
+        storage.salvar(criarBolsa("BOLSA-OTHER", "A+", 420.0, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 11, 2), "Doador Intermediario"));
+        storage.salvar(criarBolsa("BOLSA-DUP", "O+", 460.0, LocalDate.of(2026, 9, 3), LocalDate.of(2026, 11, 3), "Doador Recente"));
+
+        List<Bolsa> resultado = storage.listar();
+        assertEquals(3, resultado.size());
+        assertEquals("BOLSA-DUP", resultado.get(0).getId());
+        assertEquals("Doador Recente", resultado.get(0).getDoador());
+        assertEquals("BOLSA-OTHER", resultado.get(1).getId());
+        assertEquals("BOLSA-DUP", resultado.get(2).getId());
+        assertEquals("Doador Antigo", resultado.get(2).getDoador());
     }
 
     @Test

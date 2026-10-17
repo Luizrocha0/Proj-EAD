@@ -10,6 +10,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -76,6 +77,58 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
             assertEquals(LocalDate.of(2026, 9, 10), bolsaAposReinicio.getDataColeta());
             assertEquals(LocalDate.of(2026, 11, 10), bolsaAposReinicio.getValidade());
             assertEquals("Doador Resiliente", bolsaAposReinicio.getDoador());
+        }
+    }
+
+    @Test
+    @DirtiesContext
+    @DisplayName("H2 / T2.5: Deve preservar listagem completa, IDs repetidos e ordem LIFO após reinicialização do contexto Spring")
+    void devePreservarListagemEOrdemLIFOAposReinicioContexto() {
+        Bolsa b1 = new Bolsa("BOLSA-LIFO-01", "O+", 450.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador Inicial");
+        Bolsa b2 = new Bolsa("BOLSA-LIFO-02", "A-", 420.0, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 11, 2), "Doador Intermediario");
+        Bolsa b3 = new Bolsa("BOLSA-LIFO-01", "O+", 460.0, LocalDate.of(2026, 9, 3), LocalDate.of(2026, 11, 3), "Doador Recente (Duplicata)");
+
+        storage.salvar(b1);
+        storage.salvar(b2);
+        storage.salvar(b3);
+
+        assertEquals(3, storage.tamanho());
+
+        // Encerra o contexto atual simulando crash ou stop da aplicação
+        applicationContext.close();
+        assertFalse(applicationContext.isActive());
+
+        // Recria o contexto do zero apontando para o mesmo banco
+        org.springframework.boot.builder.SpringApplicationBuilder builder =
+                new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
+                        .profiles("infra")
+                        .properties(
+                                "spring.datasource.url=" + postgres.getJdbcUrl(),
+                                "spring.datasource.username=" + postgres.getUsername(),
+                                "spring.datasource.password=" + postgres.getPassword(),
+                                "spring.flyway.enabled=true"
+                        );
+
+        try (ConfigurableApplicationContext novoContexto = builder.run()) {
+            assertTrue(novoContexto.isActive());
+
+            EstoqueStorage novoStorage = novoContexto.getBean(EstoqueStorage.class);
+            List<Bolsa> bolsasAposReinicio = novoStorage.listar();
+
+            assertNotNull(bolsasAposReinicio);
+            assertEquals(3, bolsasAposReinicio.size());
+
+            // Ordem LIFO estrita preservada
+            assertEquals("BOLSA-LIFO-01", bolsasAposReinicio.get(0).getId());
+            assertEquals("Doador Recente (Duplicata)", bolsasAposReinicio.get(0).getDoador());
+
+            assertEquals("BOLSA-LIFO-02", bolsasAposReinicio.get(1).getId());
+            assertEquals("Doador Intermediario", bolsasAposReinicio.get(1).getDoador());
+
+            assertEquals("BOLSA-LIFO-01", bolsasAposReinicio.get(2).getId());
+            assertEquals("Doador Inicial", bolsasAposReinicio.get(2).getDoador());
+
+            assertEquals(3, novoStorage.tamanho());
         }
     }
 }
