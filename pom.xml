@@ -130,6 +130,9 @@
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <properties>
+                <skipITs>false</skipITs>
+            </properties>
             <!-- Perfil Maven para execução explícita de testes de integração e aceitação (*IT.java) via Testcontainers/Failsafe -->
         </profile>
     </profiles>

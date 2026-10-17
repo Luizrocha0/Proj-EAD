@@ -2,7 +2,7 @@ name: CI — Rota Vital
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'fix/**']
+    branches: [main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**']
   pull_request:
     branches: [main]
 
@@ -137,7 +137,16 @@ jobs:
           for i in $(seq 1 45); do
             API_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-api 2>/dev/null || echo '"starting"')
             DB_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-db 2>/dev/null || echo '"starting"')
-            echo "Tentativa $i/45: API=$API_HEALTH, DB=$DB_HEALTH"
+            API_STATUS=$(docker inspect --format='{{json .State.Status}}' rotavital-api 2>/dev/null || echo '"unknown"')
+            DB_STATUS=$(docker inspect --format='{{json .State.Status}}' rotavital-db 2>/dev/null || echo '"unknown"')
+            echo "Tentativa $i/45: API=$API_HEALTH ($API_STATUS), DB=$DB_HEALTH ($DB_STATUS)"
+
+            if [ "$API_STATUS" = '"exited"' ] || [ "$DB_STATUS" = '"exited"' ]; then
+              echo "❌ Erro fatal: Contêiner encerrou inesperadamente (API=$API_STATUS, DB=$DB_STATUS)"
+              docker compose logs
+              exit 1
+            fi
+
             if [ "$API_HEALTH" = '"healthy"' ] && [ "$DB_HEALTH" = '"healthy"' ]; then
               echo "✅ Todos os serviços do Compose estão saudáveis!"
               break
@@ -156,6 +165,8 @@ jobs:
           HEALTH_RESP=$(curl --fail -s http://localhost:8080/actuator/health)
           echo "Resposta do Actuator: $HEALTH_RESP"
           echo "$HEALTH_RESP" | grep '"status":"UP"'
+          echo "$HEALTH_RESP" | grep '"db"'
+          echo "$HEALTH_RESP" | grep 'PostgreSQL'
 
       - name: Smoke Test — API REST Funcional (CRUD Completo com PostgreSQL Real)
         run: |
@@ -195,7 +206,22 @@ jobs:
           FINAL_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
           echo "Resposta final: $FINAL_RESP"
           echo "$FINAL_RESP" | grep '"tamanho":0'
-          echo "✅ Smoke Test de ponta a ponta (Actuator + CRUD PostgreSQL) aprovado!"
+
+          echo "7. Validando retorno 404 para consulta de ID inexistente..."
+          NOT_FOUND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/estoque/ID-INEXISTENTE-999)
+          if [ "$NOT_FOUND_CODE" != "404" ]; then
+            echo "❌ Erro: Esperado HTTP 404 para ID inexistente, recebido $NOT_FOUND_CODE"
+            exit 1
+          fi
+
+          echo "8. Validando retorno 404 para deleção de ID inexistente..."
+          DEL_NOT_FOUND_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE http://localhost:8080/api/estoque/ID-INEXISTENTE-999)
+          if [ "$DEL_NOT_FOUND_CODE" != "404" ]; then
+            echo "❌ Erro: Esperado HTTP 404 para DELETE inexistente, recebido $DEL_NOT_FOUND_CODE"
+            exit 1
+          fi
+
+          echo "✅ Smoke Test de ponta a ponta (Actuator com PostgreSQL + CRUD completo + 404) aprovado!"
 
       - name: Coletar logs e encerrar ambiente containerizado
         if: always()
@@ -217,23 +243,26 @@ jobs:
 
     steps:
       - name: Triggar deploy no Render com commit SHA validado
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "❌ RENDER_DEPLOY_HOOK_URL não configurado."
             exit 1
           fi
-          URL="${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-          if echo "$URL" | grep -q '?'; then
-            HOOK_URL="${URL}&ref=${{ github.sha }}"
+          if echo "$RENDER_DEPLOY_HOOK_URL" | grep -q '?'; then
+            HOOK_URL="${RENDER_DEPLOY_HOOK_URL}&ref=${{ github.sha }}"
           else
-            HOOK_URL="${URL}?ref=${{ github.sha }}"
+            HOOK_URL="${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"
           fi
           curl --fail -X POST "$HOOK_URL"
           echo "✅ Deploy disparado no Render para o commit ${{ github.sha }}"
 
       - name: Aguardar e verificar URL pública
+        env:
+          RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         run: |
-          if [ -z "${{ secrets.RENDER_APP_URL }}" ]; then
+          if [ -z "$RENDER_APP_URL" ]; then
             echo "❌ RENDER_APP_URL não configurado."
             exit 1
           fi
@@ -241,9 +270,9 @@ jobs:
           MAX_RETRIES=30
           INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_APP_URL/actuator/health")
             if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
+              echo "✅ Aplicação em produção respondendo — $RENDER_APP_URL"
               exit 0
             fi
             echo "Tentativa $i falhou (status $STATUS). Aguardando $INTERVAL segundos..."
