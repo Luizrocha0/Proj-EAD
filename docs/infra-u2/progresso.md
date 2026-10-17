@@ -14,7 +14,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 3** | E2: H1 — Cadastro e Recuperação Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 4** | E2: H2 — Listagem e Consulta Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | **Concluída** | 17/10/2026 |
-| **Etapa 6** | E2: Integração e Gates na Esteira | Pendente | — |
+| **Etapa 6** | E2: Integração e Gates na Esteira | **Concluída** | 17/10/2026 |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | Pendente | — |
 | **Etapa 8** | Documentação e Apresentação | Pendente | — |
 | **Etapa 9** | Auditoria Final | Pendente | — |
@@ -970,5 +970,106 @@ Uma terceira rodada adversarial minuciosa consolidou a blindagem de casos de bor
 - **Pendências:** 
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
 - **Próxima etapa:** **Etapa 6 — E2: Integração e Gates na Esteira** (consolidação da esteira de CI com execução automatizada de testes nos 3 níveis, gates de qualidade e relatório de cobertura).
+
+---
+
+## Etapa 6: E2: Integração e Gates na Esteira
+
+- **Estado:** Concluída
+- **Data de Execução:** 17/10/2026
+- **Objetivo:** Consolidar a execução de testes por nível (unitários sem banco via Surefire, integração e aceitação com PostgreSQL real via Failsafe/Testcontainers, testes C com make/gcc e benchmarks Python), estruturar a esteira de CI (`.github/workflows/ci.yml`) com gates estritos e sem contornos (`continue-on-error` ou `|| true`), concluir e documentar formalmente a demonstração de persistência do E1 (cadastro via API, reinício e preservação via volume nomeado do Compose e `BolsaPersistidaIT`) e consolidar a matriz exaustiva de rastreabilidade TDD em `docs/infra-u2/tdd.md`. A Etapa 7 (branches, proteção de main e deploy final no Render) permanece expressamente pendente.
+
+---
+
+### 1. Consolidação dos Testes por Nível no Maven (R1)
+
+1. **Separação Funcional Auditada entre Surefire e Failsafe:**
+   - **Testes Unitários Rápidos (Nível 1):** Executados via `.\mvnw.cmd test`. O `maven-surefire-plugin` inclui `**/*Test.java` e exclui expressamente `**/*IT.java`. Executam 100% em memória, cobrindo estruturas de AED, serviços, controllers, DTOs e testes de caracterização da U1, sem requerer Docker ou banco externo (~19s de execução).
+   - **Testes de Integração e Aceitação (Níveis 2 e 3):** Executados via `.\mvnw.cmd verify` ou `.\mvnw.cmd -Pintegration verify`. O `maven-failsafe-plugin` descobre e executa exclusivamente `**/*IT.java` (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`), subindo contêiner PostgreSQL 16 via Testcontainers.
+   - **Perfil Maven `integration`:** Declarado formalmente em `pom.xml` (`<profile><id>integration</id>...`), garantindo compatibilidade com o comando padronizado `.\mvnw.cmd -Pintegration verify` sem warnings de perfil não encontrado.
+2. **Falha Ruidosa sem Fallback Silencioso:**
+   - Foi comprovado experimentalmente na auditoria que na ausência do daemon Docker, os testes de integração (`*IT.java`) falham ruidosamente com `IllegalStateException: Could not find a valid Docker environment`, quebrando o build com `BUILD FAILURE` (código de saída 1). Nenhum teste de integração é ignorado silenciosamente.
+3. **Paridade com Testes C e Benchmarks Python:**
+   - **Testes C (AED U1):** 54/54 asserções aprovadas localmente via GCC (23 em `test_lista` e 31 em `test_fila`), com compilação e execução limpas.
+   - **Benchmarks Python (SO U1):** 7/7 testes unitários aprovados (`test_plot_speedup.py`) e consistência estatística de 8 configurações e 40 medições canônicas confirmada via `plot_speedup.py --check`.
+
+---
+
+### 2. Estruturação e Endurecimento dos Gates na Esteira CI (R2)
+
+O arquivo `.github/workflows/ci.yml` foi reestruturado e endurecido, eliminando todas as práticas permissivas e estabelecendo dependências formais no grafo de execução (DAG):
+
+1. **Gate 1 — SO (Benchmarks e Agregação Python):**
+   - Executa `unittest discover` nos testes de benchmark e `plot_speedup.py --check`.
+2. **Gate 2 — AED C (GCC + AddressSanitizer & UBSan):**
+   - Instala GCC e compila com flags `-fsanitize=address,undefined`, executando os 54 testes com detecção estrita de vazamentos ou corrupção de memória.
+3. **Gate 3 — Java Unitário (Surefire):**
+   - Executa `./mvnw test` (183 testes unitários e de caracterização). Publica relatórios Surefire como artefatos.
+4. **Gate 4 — Java Integração e Aceitação (Failsafe + Testcontainers):**
+   - Dependência: `needs: test-java-unit`.
+   - Executa `./mvnw -Pintegration verify` com Docker nativo do runner Ubuntu, exercitando PostgreSQL 16 real. Publica relatórios Failsafe como artefatos.
+5. **Gate 5 — Docker Build sem `-DskipTests` e Smoke Test Containerizado:**
+   - Dependência: `needs: [check-benchmark, test-c, test-java-unit, test-java-integration]`.
+   - Valida a sintaxe da orquestração com `docker compose config --quiet`.
+   - Constrói e sobe os contêineres via `docker compose up -d --build`. O estágio builder do Dockerfile compila e testa a aplicação via `./mvnw package -DskipITs -q` (sem `-DskipTests`).
+   - Monitora o estado de saúde de `rotavital-api` e `rotavital-db` até o status `healthy`.
+   - Executa Smoke Test HTTP contra o Actuator Health (`grep '"status":"UP"'`) e contra o endpoint REST `/api/estoque` (`grep '"bolsas"'`).
+   - Coleta logs e encerra os serviços com `docker compose down -v`.
+6. **Gate 6 — Deploy Automatizado no Render (Pendente Etapa 7):**
+   - Dependência: `needs: build-docker-smoke`.
+   - Condição estrita: `if: github.ref == 'refs/heads/main' && false` (preparado com ref do commit SHA validado, mas pendente de ativação na Etapa 7).
+7. **Eliminação Total de Contornos Permissivos:**
+   - Proibição absoluta e remoção de qualquer `continue-on-error: true`, `|| true` ou `|| echo "000"`.
+   - Se qualquer gate falhar, o pipeline quebra imediatamente e bloqueia a integração.
+
+---
+
+### 3. Demonstração e Roteiro de Persistência do E1 (R3)
+
+O roteiro de demonstração operacional da persistência relacional da Release 1 foi formalizado e vinculado à suíte automatizada:
+
+1. **Roteiro Estrutural no Docker Compose:**
+   - **Passo 1:** Subida limpa com `docker compose up -d --build` e validação com `docker compose ps` (ambos `healthy`).
+   - **Passo 2:** Cadastro de bolsa via HTTP `POST /api/estoque` com dados completos (`id`, `tipoSanguineo`, `volumeMl`, `dataColeta`, `validade`, `doador`). Retorno HTTP 200 com envelope.
+   - **Passo 3:** Confirmação da gravação física na tabela `bolsas` do PostgreSQL real via `docker compose exec db psql -U rotavital -d rotavital -c "SELECT ... FROM bolsas;"`.
+   - **Passo 4:** Simulação de parada/queda de processo com `docker compose restart api` e consulta imediata via `GET /api/estoque/{id}`, atestando recuperação de todos os atributos.
+   - **Passo 5:** Encerramento via `docker compose down` (sem a flag `-v`) e posterior subida via `docker compose up -d`. Comprovação de preservação durável do estoque pelo volume nomeado `rotavital-postgres-data`.
+2. **Vínculo Rastreável ao Teste Automatizado `BolsaPersistidaIT`:**
+   - `devePersistirBolsaAposReinicioContexto` (H1 / T1.4): Prova persistência de todos os campos após fechar (`applicationContext.close()`) e recriar o contexto Spring contra o mesmo PostgreSQL.
+   - `devePreservarListagemEOrdemLIFOAposReinicioContexto` (H2 / T2.5): Prova listagem LIFO e integridade de duplicatas pós-reinício.
+   - `deveManterRemocaoAposReinicioContexto` (H3 / T3.4): Prova atomicidade e ausência permanente da duplicata excluída após múltiplos ciclos de reinício.
+
+---
+
+### 4. Relatório de TDD e Matriz Rastreável (R4)
+
+Foi criado o documento exaustivo `docs/infra-u2/tdd.md` contendo:
+- Metodologia Red → Green → Refactor adotada na U2.
+- Segregação de testes em 3 níveis (Unitário, Integração e Aceitação).
+- Diferenciação detalhada entre o patrimônio acadêmico da U1 (54 asserções C, 7 testes Python, 48 testes Java U1) e as novas baterias da U2 (183 testes unitários e de caracterização Java + 36 métodos de integração e aceitação IT).
+- Matriz completa de rastreabilidade de todas as tarefas de H1, H2, H3 e caracterização da U1, associando história, teste, comando, falha Red, commit de implementação Green e resultado auditado.
+
+---
+
+### 5. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída**.
+- **Mudanças:** 
+  - Adição do perfil Maven `integration` no `pom.xml` para ativação formal de Failsafe e Testcontainers via `.\mvnw.cmd -Pintegration verify`.
+  - Reestruturação de `.github/workflows/ci.yml` em 6 gates sequenciais/dependentes (Benchmarks Python, Testes C com sanitizers, Testes Java Unitários Surefire, Testes Java Integração/Aceitação Failsafe com Testcontainers, Docker Build sem `-DskipTests` com Smoke Test Compose, e Deploy no Render formalmente preparado mas pendente para a Etapa 7).
+  - Eliminação completa de contornos de falha (`continue-on-error` e `|| true`).
+  - Criação do documento `docs/infra-u2/tdd.md` com a metodologia Red → Green, diferenciação pedagógica U1 vs U2, matriz de rastreabilidade de commits e roteiro de demonstração do Compose.
+  - Atualização de `docs/infra-u2/progresso.md` marcando a Etapa 6 como Concluída.
+- **Verificação:** 
+  - **183/183 testes Java unitários e de caracterização aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~19s).
+  - Comprovação de falha ruidosa (`BUILD FAILURE`, código 1) no `.\mvnw.cmd verify` quando o Docker Desktop não está em execução, garantindo que testes de integração não são silenciados.
+  - Validação da ativação do perfil `integration` via `.\mvnw.cmd -Pintegration help:active-profiles`.
+  - 54/54 testes em C aprovados localmente com zero vazamentos (23 em `test_lista` e 31 em `test_fila`).
+  - 7/7 testes de benchmarks em Python aprovados e checagem `--check` de 8 configurações bem-sucedida.
+  - Validação da sintaxe do Compose via `docker compose config --quiet` (saída 0).
+- **Pendências:** 
+  - A Etapa 7 (Branches, GitHub Flow, proteção de branch `main` e deploy final no Render) permanece expressamente **Pendente**.
+- **Próxima etapa:** **Etapa 7 — E3: Branches, GitHub Flow e Deploy Automatizado** (criação de branch de entrega, abertura de Pull Request para `main`, configuração/verificação das regras de proteção de branch e publicação no Render com banco gerenciado).
+
 
 
