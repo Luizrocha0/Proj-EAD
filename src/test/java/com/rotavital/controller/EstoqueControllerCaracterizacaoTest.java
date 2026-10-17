@@ -1,0 +1,138 @@
+package com.rotavital.controller;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("u1")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@DisplayName("Testes de Caracterização da U1 - EstoqueController sob perfil u1")
+class EstoqueControllerCaracterizacaoTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    private static final String JSON_BOLSA_1 = """
+        {
+            "id": "BOLSA-001",
+            "tipoSanguineo": "O+",
+            "volumeMl": "450.0",
+            "dataColeta": "2026-09-01",
+            "validade": "2026-11-01",
+            "doador": "João Silva"
+        }
+        """;
+
+    private static final String JSON_BOLSA_2 = """
+        {
+            "id": "BOLSA-002",
+            "tipoSanguineo": "A-",
+            "volumeMl": "400.0",
+            "dataColeta": "2026-09-02",
+            "validade": "2026-11-02",
+            "doador": "Maria Souza"
+        }
+        """;
+
+    @Test
+    @DisplayName("POST /api/estoque deve cadastrar bolsa e retornar 200 com tamanho 1")
+    void deveAdicionarBolsaERetornar200ComTamanho() throws Exception {
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_BOLSA_1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa adicionada ao estoque")))
+                .andExpect(jsonPath("$.tamanho", is(1)));
+    }
+
+    @Test
+    @DisplayName("GET /api/estoque/{id} deve retornar 200 e dados completos da bolsa existente")
+    void deveConsultarBolsaExistenteERetornar200() throws Exception {
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_BOLSA_1))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque/BOLSA-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is("BOLSA-001")))
+                .andExpect(jsonPath("$.tipoSanguineo", is("O+")))
+                .andExpect(jsonPath("$.volumeMl", is(450.0)))
+                .andExpect(jsonPath("$.dataColeta", is("2026-09-01")))
+                .andExpect(jsonPath("$.validade", is("2026-11-01")))
+                .andExpect(jsonPath("$.doador", is("João Silva")));
+    }
+
+    @Test
+    @DisplayName("GET /api/estoque/{id} deve retornar 404 para bolsa inexistente")
+    void deveRetornar404ParaBolsaInexistente() throws Exception {
+        mockMvc.perform(get("/api/estoque/BOLSA-INEXISTENTE"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/estoque/{id} deve remover bolsa existente e decrementar tamanho")
+    void deveRemoverBolsaERetornar200ComTamanho() throws Exception {
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_BOLSA_1))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/estoque/BOLSA-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(0)));
+
+        mockMvc.perform(get("/api/estoque/BOLSA-001"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/estoque/{id} deve retornar 404 ao tentar remover bolsa inexistente")
+    void deveRetornar404AoRemoverInexistente() throws Exception {
+        mockMvc.perform(delete("/api/estoque/BOLSA-INEXISTENTE"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/estoque deve retornar envelope com bolsas em ordem LIFO e tamanho")
+    void deveListarBolsasComEnvelopeERespeitarLIFO() throws Exception {
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_BOLSA_1))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_BOLSA_2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(2)))
+                .andExpect(jsonPath("$.bolsas", hasSize(2)))
+                .andExpect(jsonPath("$.bolsas[0].id", is("BOLSA-002")))
+                .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-001")));
+    }
+
+    @Test
+    @DisplayName("GET /api/estoque deve retornar envelope vazio quando estoque sem bolsas")
+    void deveRetornarEnvelopeVazioQuandoSemBolsas() throws Exception {
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(0)))
+                .andExpect(jsonPath("$.bolsas", hasSize(0)));
+    }
+}
