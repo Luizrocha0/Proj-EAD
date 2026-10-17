@@ -65,13 +65,18 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     @Override
     @Transactional(readOnly = true)
     public List<Bolsa> listar() {
-        throw new UnsupportedOperationException("Pendente para Etapa 4 (H2)");
+        String sql = """
+            SELECT id, tipo_sanguineo, volume_ml, data_coleta, validade, doador
+            FROM bolsas
+            ORDER BY id_seq DESC
+            """;
+        return jdbcTemplate.query(sql, bolsaRowMapper);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Bolsa[] listarTodas() {
-        throw new UnsupportedOperationException("Pendente para Etapa 4 (H2)");
+        return listar().toArray(new Bolsa[0]);
     }
 
     @Override
