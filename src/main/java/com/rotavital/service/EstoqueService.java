@@ -81,6 +81,6 @@ public class EstoqueService {
      * Lista todas as bolsas no estoque como List delegando para o storage (H2).
      */
     public List<Bolsa> listarEstoque() {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red T2.3");
+        return storage.listar();
     }
 }
