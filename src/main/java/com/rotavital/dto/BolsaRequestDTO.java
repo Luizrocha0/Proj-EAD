@@ -44,8 +44,8 @@ public record BolsaRequestDTO(
                 throw new IllegalArgumentException("volumeMl inválido: " + s);
             }
         }
-        if (volume <= 0.0) {
-            throw new IllegalArgumentException("volumeMl deve ser positivo");
+        if (volume <= 0.0 || !Double.isFinite(volume)) {
+            throw new IllegalArgumentException("volumeMl deve ser positivo e finito");
         }
 
         Objects.requireNonNull(dataColeta, "dataColeta não pode ser nula");

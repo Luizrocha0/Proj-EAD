@@ -138,4 +138,19 @@ class ListaEstoqueStorageTest {
         assertEquals("B-1", bolsas.get(2).getId());
         assertEquals("Doador A", bolsas.get(2).getDoador());
     }
+
+    @Test
+    @DisplayName("H2 / Defensivo: Deve retornar cópia desacoplada em listar() não afetando armazenamento interno")
+    void deveRetornarCopiaDesacopladaEmListarNaoAfetandoArmazenamentoInterno() {
+        storage.salvar(criarBolsa("B-1", "O+", 450.0, "D1"));
+        storage.salvar(criarBolsa("B-2", "A+", 420.0, "D2"));
+
+        List<Bolsa> lista = storage.listar();
+        assertEquals(2, lista.size());
+
+        lista.clear();
+        assertEquals(0, lista.size());
+        assertEquals(2, storage.tamanho(), "Tamanho interno do storage não deve ser afetado pela modificação da lista");
+        assertEquals(2, storage.listar().size(), "Nova chamada a listar() deve recuperar todas as bolsas intactas");
+    }
 }

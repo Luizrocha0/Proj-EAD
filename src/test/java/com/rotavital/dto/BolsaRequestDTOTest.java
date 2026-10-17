@@ -161,6 +161,19 @@ class BolsaRequestDTOTest {
     }
 
     @Test
+    @DisplayName("Adversarial: Deve rejeitar volumeMl não-finito (NaN ou Infinity)")
+    void deveRejeitarVolumeMlNaoFinitoOuNaN() {
+        BolsaRequestDTO dtoNaN = new BolsaRequestDTO("B-1", "O+", "NaN", "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoNaN::toDomain);
+
+        BolsaRequestDTO dtoInf = new BolsaRequestDTO("B-1", "O+", "Infinity", "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoInf::toDomain);
+
+        BolsaRequestDTO dtoNumNaN = new BolsaRequestDTO("B-1", "O+", Double.NaN, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoNumNaN::toDomain);
+    }
+
+    @Test
     @DisplayName("Adversarial: Deve rejeitar volumeMl em string não-numérica")
     void deveRejeitarVolumeMlNaoNumerico() {
         BolsaRequestDTO dtoInvalido = new BolsaRequestDTO("B-1", "O+", "abc", "2026-09-01", "2026-11-01", "Doador");
