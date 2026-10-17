@@ -123,4 +123,14 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>integration</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <!-- Perfil Maven para execução explícita de testes de integração e aceitação (*IT.java) via Testcontainers/Failsafe -->
+        </profile>
+    </profiles>
 </project>
