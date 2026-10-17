@@ -132,14 +132,80 @@ class JdbcEstoqueStorageTest {
     }
 
     @Test
-    @DisplayName("Segregação H2: Deve lançar UnsupportedOperationException ao chamar listarTodas pois H2 está pendente")
-    void deveLancarUnsupportedOperationExceptionAoListarTodasPoisH2EstaPendente() {
-        UnsupportedOperationException ex = assertThrows(
-                UnsupportedOperationException.class,
-                () -> storage.listarTodas()
-        );
-        assertTrue(ex.getMessage().contains("Pendente para Etapa 4 (H2)"));
-        verifyNoInteractions(jdbcTemplate);
+    @DisplayName("H2 / T2.2: Deve listar bolsas executando SELECT com ORDER BY id_seq DESC via JdbcTemplate")
+    void deveListarBolsasExecutandoSelectComOrderBySeqDesc() {
+        Bolsa b1 = criarBolsa("BOLSA-001", "O+", 450.0, "João Silva");
+        Bolsa b2 = criarBolsa("BOLSA-002", "A-", 400.0, "Maria Souza");
+
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class)))
+                .thenReturn(List.of(b2, b1));
+
+        List<Bolsa> resultado = storage.listar();
+
+        assertEquals(2, resultado.size());
+        assertEquals("BOLSA-002", resultado.get(0).getId());
+        assertEquals("BOLSA-001", resultado.get(1).getId());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).query(sqlCaptor.capture(), any(RowMapper.class));
+        String sql = sqlCaptor.getValue();
+        assertTrue(sql.contains("SELECT"));
+        assertTrue(sql.contains("FROM bolsas"));
+        assertTrue(sql.contains("ORDER BY id_seq DESC"), "Consulta SQL deve conter ORDER BY id_seq DESC para garantir LIFO");
+    }
+
+    @Test
+    @DisplayName("H2 / T2.2: Deve retornar lista vazia sem erros quando a tabela estiver vazia")
+    void deveRetornarListaVaziaQuandoTabelaEstiverVazia() {
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<Bolsa> resultado = storage.listar();
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+        assertEquals(0, resultado.size());
+    }
+
+    @Test
+    @DisplayName("H2 / T2.2: Deve preservar todas as ocorrências de IDs repetidos em suas posições temporais")
+    void devePreservarTodasAsOcorrenciasDeIdsDuplicadosEmOrdemTemporal() {
+        Bolsa b1 = criarBolsa("BOLSA-DUP", "O+", 400.0, "Doador Antigo");
+        Bolsa b2 = criarBolsa("BOLSA-OTHER", "B+", 420.0, "Doador Intermediario");
+        Bolsa b3 = criarBolsa("BOLSA-DUP", "O+", 450.0, "Doador Recente");
+
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class)))
+                .thenReturn(List.of(b3, b2, b1));
+
+        List<Bolsa> resultado = storage.listar();
+
+        assertEquals(3, resultado.size());
+        assertEquals("Doador Recente", resultado.get(0).getDoador());
+        assertEquals("Doador Intermediario", resultado.get(1).getDoador());
+        assertEquals("Doador Antigo", resultado.get(2).getDoador());
+    }
+
+    @Test
+    @DisplayName("H2 / T2.2: Deve falhar imediatamente sem fallback para memória se SELECT falhar no banco")
+    void deveFalharImediatamenteSemFallbackQuandoSelectFalhar() {
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class)))
+                .thenThrow(new DataAccessException("Simulando falha de I/O no PostgreSQL") {});
+
+        assertThrows(DataAccessException.class, () -> storage.listar());
+    }
+
+    @Test
+    @DisplayName("H2 / T2.2: listarTodas() deve retornar array equivalente ao listar()")
+    void deveRetornarArrayEquivalenteEmListarTodas() {
+        Bolsa b1 = criarBolsa("BOLSA-001", "O+", 450.0, "João Silva");
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class)))
+                .thenReturn(List.of(b1));
+
+        Bolsa[] array = storage.listarTodas();
+
+        assertNotNull(array);
+        assertEquals(1, array.length);
+        assertEquals("BOLSA-001", array[0].getId());
     }
 
     @Test
