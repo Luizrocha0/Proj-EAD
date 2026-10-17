@@ -195,6 +195,18 @@ class JdbcEstoqueStorageTest {
     }
 
     @Test
+    @DisplayName("H2 / Fail-Fast: buscarPorId e tamanho devem falhar imediatamente sem fallback quando JDBC lançar DataAccessException")
+    void devePropagarDataAccessExceptionSemFallbackEmTamanhoEBuscarPorId() {
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq("BOLSA-FAIL")))
+                .thenThrow(new DataAccessException("Falha de conexão em buscarPorId") {});
+        assertThrows(DataAccessException.class, () -> storage.buscarPorId("BOLSA-FAIL"));
+
+        when(jdbcTemplate.queryForObject(contains("COUNT(*)"), eq(Integer.class)))
+                .thenThrow(new DataAccessException("Falha de conexão em tamanho") {});
+        assertThrows(DataAccessException.class, () -> storage.tamanho());
+    }
+
+    @Test
     @DisplayName("H2 / T2.2: listarTodas() deve retornar array equivalente ao listar()")
     void deveRetornarArrayEquivalenteEmListarTodas() {
         Bolsa b1 = criarBolsa("BOLSA-001", "O+", 450.0, "João Silva");

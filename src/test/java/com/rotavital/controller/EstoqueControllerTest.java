@@ -164,6 +164,14 @@ class EstoqueControllerTest {
     }
 
     @Test
+    @DisplayName("H2 / Fail-Fast: GET /api/estoque/{id} deve propagar DataAccessException imediatamente sem fallback")
+    void devePropagarDataAccessExceptionSemFallbackEmConsultar() {
+        when(estoqueService.consultar("BOLSA-FAIL")).thenThrow(new DataAccessException("Simulando falha de banco") {});
+
+        assertThrows(DataAccessException.class, () -> controller.consultar("BOLSA-FAIL"));
+    }
+
+    @Test
     @DisplayName("H1 / Nível 1: POST /api/estoque deve adicionar bolsa e retornar 200 com mensagem e tamanho")
     void deveAdicionarBolsaComSucesso() {
         BolsaRequestDTO dto = new BolsaRequestDTO(

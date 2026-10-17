@@ -128,6 +128,83 @@ class EstoqueControllerCaracterizacaoTest {
     }
 
     @Test
+    @DisplayName("H2 / Caracterização: GET /api/estoque deve listar as 5 fixtures canônicas em ordem LIFO reversa sob perfil u1")
+    void deveListarTodasAsCincoBolsasCanonicasEmOrdemLIFOSobPerfilU1() throws Exception {
+        String[] fixtures = new String[] {
+            """
+            {
+                "id": "BOLSA-001",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """,
+            """
+            {
+                "id": "BOLSA-002",
+                "tipoSanguineo": "A-",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-05",
+                "validade": "2026-11-05",
+                "doador": "Maria Santos"
+            }
+            """,
+            """
+            {
+                "id": "BOLSA-003",
+                "tipoSanguineo": "B+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-10",
+                "validade": "2026-11-10",
+                "doador": "Carlos Oliveira"
+            }
+            """,
+            """
+            {
+                "id": "BOLSA-004",
+                "tipoSanguineo": "AB+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-08-15",
+                "validade": "2026-10-15",
+                "doador": "Ana Costa"
+            }
+            """,
+            """
+            {
+                "id": "BOLSA-005",
+                "tipoSanguineo": "O-",
+                "volumeMl": 500.0,
+                "dataColeta": "2026-09-20",
+                "validade": "2026-11-20",
+                "doador": "Pedro Almeida"
+            }
+            """
+        };
+
+        for (String f : fixtures) {
+            mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(f))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(get("/api/estoque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tamanho", is(5)))
+                .andExpect(jsonPath("$.bolsas", hasSize(5)))
+                .andExpect(jsonPath("$.bolsas[0].id", is("BOLSA-005")))
+                .andExpect(jsonPath("$.bolsas[0].doador", is("Pedro Almeida")))
+                .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-004")))
+                .andExpect(jsonPath("$.bolsas[1].doador", is("Ana Costa")))
+                .andExpect(jsonPath("$.bolsas[2].id", is("BOLSA-003")))
+                .andExpect(jsonPath("$.bolsas[2].doador", is("Carlos Oliveira")))
+                .andExpect(jsonPath("$.bolsas[3].id", is("BOLSA-002")))
+                .andExpect(jsonPath("$.bolsas[3].doador", is("Maria Santos")))
+                .andExpect(jsonPath("$.bolsas[4].id", is("BOLSA-001")))
+                .andExpect(jsonPath("$.bolsas[4].doador", is("João Silva")));
+    }
+
+    @Test
     @DisplayName("GET /api/estoque deve retornar envelope vazio quando estoque sem bolsas")
     void deveRetornarEnvelopeVazioQuandoSemBolsas() throws Exception {
         mockMvc.perform(get("/api/estoque"))
@@ -287,6 +364,27 @@ class EstoqueControllerCaracterizacaoTest {
         mockMvc.perform(post("/api/estoque")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonVolumeNegativo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
+    }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 para volume NaN ou não-finito")
+    void deveRetornar400AoAdicionarBolsaComVolumeNaN() throws Exception {
+        String jsonVolumeNaN = """
+            {
+                "id": "BOLSA-VOL-NAN",
+                "tipoSanguineo": "O+",
+                "volumeMl": "NaN",
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonVolumeNaN))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
     }

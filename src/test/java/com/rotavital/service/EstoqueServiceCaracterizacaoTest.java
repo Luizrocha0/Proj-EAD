@@ -57,6 +57,24 @@ class EstoqueServiceCaracterizacaoTest {
     }
 
     @Test
+    @DisplayName("H2 / Caracterização: Deve listar todas as bolsas em ordem LIFO retornando List<Bolsa>")
+    void deveListarEstoqueEmOrdemLIFORetornandoList() {
+        Bolsa b1 = criarBolsa("BOLSA-001", "O+", 450.0, "Doador 1");
+        Bolsa b2 = criarBolsa("BOLSA-002", "A-", 400.0, "Doador 2");
+        Bolsa b3 = criarBolsa("BOLSA-003", "B+", 420.0, "Doador 3");
+
+        service.adicionar(b1);
+        service.adicionar(b2);
+        service.adicionar(b3);
+
+        java.util.List<Bolsa> bolsas = service.listarEstoque();
+        assertEquals(3, bolsas.size());
+        assertEquals("BOLSA-003", bolsas.get(0).getId());
+        assertEquals("BOLSA-002", bolsas.get(1).getId());
+        assertEquals("BOLSA-001", bolsas.get(2).getId());
+    }
+
+    @Test
     @DisplayName("Deve consultar a ocorrência mais recente em caso de duplicatas")
     void deveConsultarOcorrenciaMaisRecenteEmDuplicatas() {
         Bolsa antiga = criarBolsa("BOLSA-DUP", "O+", 450.0, "Doador Antigo");
