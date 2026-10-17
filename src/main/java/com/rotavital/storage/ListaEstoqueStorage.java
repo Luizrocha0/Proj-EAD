@@ -5,6 +5,8 @@ import com.rotavital.domain.Bolsa;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -33,6 +35,11 @@ public class ListaEstoqueStorage implements EstoqueStorage {
             return false;
         }
         return listaEstoque.remover(id.trim());
+    }
+
+    @Override
+    public List<Bolsa> listar() {
+        return Arrays.asList(listaEstoque.toArray());
     }
 
     @Override

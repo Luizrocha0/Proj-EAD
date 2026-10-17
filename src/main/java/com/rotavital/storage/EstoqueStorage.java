@@ -8,9 +8,7 @@ public interface EstoqueStorage {
     void salvar(Bolsa bolsa);
     Optional<Bolsa> buscarPorId(String id);
     boolean removerPorId(String id);
-    default List<Bolsa> listar() {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red T2.1");
-    }
+    List<Bolsa> listar();
     Bolsa[] listarTodas();
     int tamanho();
 }
