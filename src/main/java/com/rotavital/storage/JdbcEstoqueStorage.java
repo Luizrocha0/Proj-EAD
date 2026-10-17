@@ -64,6 +64,12 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Bolsa> listar() {
+        throw new UnsupportedOperationException("Pendente para Etapa 4 (H2)");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Bolsa[] listarTodas() {
         throw new UnsupportedOperationException("Pendente para Etapa 4 (H2)");
     }
