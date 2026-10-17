@@ -130,4 +130,81 @@ class JdbcEstoqueStorageTest {
     void deveRejeitarInstanciacaoComJdbcTemplateNulo() {
         assertThrows(NullPointerException.class, () -> new JdbcEstoqueStorage(null));
     }
+
+    @Test
+    @DisplayName("Segregação H2: Deve lançar UnsupportedOperationException ao chamar listarTodas pois H2 está pendente")
+    void deveLancarUnsupportedOperationExceptionAoListarTodasPoisH2EstaPendente() {
+        UnsupportedOperationException ex = assertThrows(
+                UnsupportedOperationException.class,
+                () -> storage.listarTodas()
+        );
+        assertTrue(ex.getMessage().contains("Pendente para Etapa 4 (H2)"));
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("Segregação H3: Deve lançar UnsupportedOperationException ao chamar removerPorId pois H3 está pendente")
+    void deveLancarUnsupportedOperationExceptionAoRemoverPorIdPoisH3EstaPendente() {
+        UnsupportedOperationException ex = assertThrows(
+                UnsupportedOperationException.class,
+                () -> storage.removerPorId("BOLSA-001")
+        );
+        assertTrue(ex.getMessage().contains("Pendente para Etapa 5 (H3)"));
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve preservar encoding UTF-8 com acentuação e caracteres especiais em doador e ID")
+    void devePreservarEncodingUtf8ECaracteresEspeciais() {
+        String idComSimbolos = "BOLSA_001-A/2026";
+        String doadorAcentuado = "José da Conceição Araújo & Filhos";
+        Bolsa bolsa = criarBolsa(idComSimbolos, "AB+", 450.0, doadorAcentuado);
+
+        storage.salvar(bolsa);
+
+        verify(jdbcTemplate).update(
+                anyString(),
+                eq(idComSimbolos),
+                eq("AB+"),
+                eq(450.0),
+                any(Date.class),
+                any(Date.class),
+                eq(doadorAcentuado)
+        );
+
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(idComSimbolos)))
+                .thenReturn(List.of(bolsa));
+
+        Optional<Bolsa> resultado = storage.buscarPorId(idComSimbolos);
+        assertTrue(resultado.isPresent());
+        assertEquals(idComSimbolos, resultado.get().getId());
+        assertEquals(doadorAcentuado, resultado.get().getDoador());
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve ser resiliente a tentativas de SQL Injection em buscarPorId e salvar")
+    void deveSerResilienteAInjecaoSql() {
+        String idSqlInjection = "' OR '1'='1";
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(idSqlInjection)))
+                .thenReturn(Collections.emptyList());
+
+        Optional<Bolsa> resultado = storage.buscarPorId(idSqlInjection);
+        assertTrue(resultado.isEmpty());
+        verify(jdbcTemplate).query(contains("WHERE id = ?"), any(RowMapper.class), eq(idSqlInjection));
+
+        String idMalicioso = "'; DROP TABLE bolsas; --";
+        String doadorMalicioso = "Robert'); DROP TABLE bolsas;--";
+        Bolsa bolsaMaliciosa = criarBolsa(idMalicioso, "O+", 450.0, doadorMalicioso);
+
+        storage.salvar(bolsaMaliciosa);
+        verify(jdbcTemplate).update(
+                contains("INSERT INTO bolsas"),
+                eq(idMalicioso),
+                eq("O+"),
+                eq(450.0),
+                any(Date.class),
+                any(Date.class),
+                eq(doadorMalicioso)
+        );
+    }
 }

@@ -110,4 +110,41 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
     void deveRejeitarSalvarBolsaNula() {
         assertThrows(NullPointerException.class, () -> storage.salvar(null));
     }
+
+    @Test
+    @DisplayName("Segregação H2: Deve lançar UnsupportedOperationException ao chamar listarTodas pois H2 está pendente")
+    void deveLancarUnsupportedOperationExceptionAoListarTodas() {
+        assertThrows(UnsupportedOperationException.class, () -> storage.listarTodas());
+    }
+
+    @Test
+    @DisplayName("Segregação H3: Deve lançar UnsupportedOperationException ao chamar removerPorId pois H3 está pendente")
+    void deveLancarUnsupportedOperationExceptionAoRemoverPorId() {
+        assertThrows(UnsupportedOperationException.class, () -> storage.removerPorId("BOLSA-001"));
+    }
+
+    @Test
+    @DisplayName("H1 / T1.2: Deve persistir e recuperar com encoding UTF-8 e símbolos alfanuméricos")
+    void devePersistirERecuperarComEncodingUtf8ESimbolos() {
+        Bolsa bolsa = criarBolsa(
+                "BOLSA_UTF8-001/2026",
+                "O-",
+                450.0,
+                LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 11, 1),
+                "José da Conceição Araújo & Cia"
+        );
+        storage.salvar(bolsa);
+
+        Optional<Bolsa> resultado = storage.buscarPorId("BOLSA_UTF8-001/2026");
+        assertTrue(resultado.isPresent());
+        assertEquals("José da Conceição Araújo & Cia", resultado.get().getDoador());
+    }
+
+    @Test
+    @DisplayName("H1 / T1.2: Deve ser resiliente a tentativas de SQL Injection em buscarPorId")
+    void deveSerResilienteAInjecaoSqlEmBuscarPorId() {
+        Optional<Bolsa> resultado = storage.buscarPorId("' OR '1'='1");
+        assertTrue(resultado.isEmpty());
+    }
 }
