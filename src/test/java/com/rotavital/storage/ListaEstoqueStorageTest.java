@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -96,5 +97,43 @@ class ListaEstoqueStorageTest {
     void deveRetornarFalseAoRemoverIdNuloOuEmBranco() {
         assertFalse(storage.removerPorId(null));
         assertFalse(storage.removerPorId("   "));
+    }
+
+    @Test
+    @DisplayName("H2 / T2.1: Deve listar bolsas em ordem LIFO retornando List<Bolsa>")
+    void deveListarBolsasEmOrdemLIFOComLista() {
+        storage.salvar(criarBolsa("B-1", "O+", 450.0, "D1"));
+        storage.salvar(criarBolsa("B-2", "A+", 450.0, "D2"));
+
+        List<Bolsa> bolsas = storage.listar();
+        assertEquals(2, bolsas.size());
+        assertEquals("B-2", bolsas.get(0).getId());
+        assertEquals("B-1", bolsas.get(1).getId());
+    }
+
+    @Test
+    @DisplayName("H2 / T2.1: Deve retornar lista vazia sem erros quando estoque estiver vazio")
+    void deveRetornarListaVaziaQuandoEstoqueVazio() {
+        List<Bolsa> bolsas = storage.listar();
+        assertNotNull(bolsas);
+        assertTrue(bolsas.isEmpty());
+        assertEquals(0, bolsas.size());
+    }
+
+    @Test
+    @DisplayName("H2 / T2.1: Deve preservar todas as ocorrências de IDs duplicados em ordem temporal LIFO")
+    void devePreservarTodasAsOcorrenciasDeIdsDuplicadosEmOrdemLIFO() {
+        storage.salvar(criarBolsa("B-1", "O+", 400.0, "Doador A"));
+        storage.salvar(criarBolsa("B-2", "A+", 420.0, "Doador B"));
+        storage.salvar(criarBolsa("B-1", "O+", 450.0, "Doador C"));
+
+        List<Bolsa> bolsas = storage.listar();
+        assertEquals(3, bolsas.size());
+        assertEquals("B-1", bolsas.get(0).getId());
+        assertEquals("Doador C", bolsas.get(0).getDoador());
+        assertEquals("B-2", bolsas.get(1).getId());
+        assertEquals("Doador B", bolsas.get(1).getDoador());
+        assertEquals("B-1", bolsas.get(2).getId());
+        assertEquals("Doador A", bolsas.get(2).getDoador());
     }
 }
