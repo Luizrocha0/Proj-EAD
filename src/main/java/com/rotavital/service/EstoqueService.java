@@ -2,6 +2,7 @@ package com.rotavital.service;
 
 import com.rotavital.aed.u1.ListaEstoque;
 import com.rotavital.domain.Bolsa;
+import com.rotavital.storage.EstoqueStorage;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -16,6 +17,14 @@ import java.util.Optional;
 public class EstoqueService {
 
     private final ListaEstoque estoque = new ListaEstoque();
+    private EstoqueStorage storage;
+
+    public EstoqueService() {
+    }
+
+    public EstoqueService(EstoqueStorage storage) {
+        this.storage = storage;
+    }
 
     /**
      * Adiciona uma bolsa ao estoque.
