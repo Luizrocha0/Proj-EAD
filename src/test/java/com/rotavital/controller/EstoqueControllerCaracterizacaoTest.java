@@ -239,4 +239,29 @@ class EstoqueControllerCaracterizacaoTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipoSanguineo", is("AB+")));
     }
+
+    @Test
+    @DisplayName("Adversarial: POST e GET /api/estoque devem preservar acentuação UTF-8 em doador e símbolos no ID")
+    void devePreservarAcentuacaoUtf8ESimbolosEmIdViaApi() throws Exception {
+        String jsonUtf8 = """
+            {
+                "id": "BOLSA_UTF8-01",
+                "tipoSanguineo": "O-",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "José da Conceição Araújo & Cia"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonUtf8))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque/BOLSA_UTF8-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is("BOLSA_UTF8-01")))
+                .andExpect(jsonPath("$.doador", is("José da Conceição Araújo & Cia")));
+    }
 }

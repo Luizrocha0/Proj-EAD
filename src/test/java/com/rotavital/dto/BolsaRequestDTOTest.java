@@ -186,4 +186,21 @@ class BolsaRequestDTOTest {
         assertEquals(LocalDate.of(2026, 9, 1), bolsa.getDataColeta());
         assertEquals(LocalDate.of(2026, 11, 1), bolsa.getValidade());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve preservar acentuação UTF-8 em doador e símbolos alfanuméricos em ID")
+    void devePreservarAcentuacaoUtf8ESimbolosEmId() {
+        BolsaRequestDTO dto = new BolsaRequestDTO(
+                "  BOLSA_001-A/2026  ",
+                "  o+  ",
+                450.0,
+                "2026-09-01",
+                "2026-11-01",
+                "  José da Conceição Araújo & Cia  "
+        );
+        Bolsa bolsa = dto.toDomain();
+        assertEquals("BOLSA_001-A/2026", bolsa.getId());
+        assertEquals("O+", bolsa.getTipoSanguineo());
+        assertEquals("José da Conceição Araújo & Cia", bolsa.getDoador());
+    }
 }
