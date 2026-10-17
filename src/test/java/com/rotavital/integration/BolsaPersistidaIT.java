@@ -152,4 +152,70 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
             assertEquals("Doador Inicial", arrayAposReinicio[2].getDoador());
         }
     }
+
+    @Test
+    @DirtiesContext
+    @DisplayName("H3 / T3.4 / CA3.4 / CA3.5 / RN3.5: Deve manter remoção persistente de duplicata e ausência durável após reinicialização do contexto Spring")
+    void deveManterRemocaoAposReinicioContexto() {
+        Bolsa b1Antiga = new Bolsa("BOLSA-RESTART-DEL", "O+", 400.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador Antigo");
+        Bolsa b1Recente = new Bolsa("BOLSA-RESTART-DEL", "O+", 460.0, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 11, 2), "Doador Recente");
+        Bolsa b2 = new Bolsa("BOLSA-RESTART-OUTRA", "A+", 450.0, LocalDate.of(2026, 9, 3), LocalDate.of(2026, 11, 3), "Outro Doador");
+
+        storage.salvar(b1Antiga);
+        storage.salvar(b1Recente);
+        storage.salvar(b2);
+
+        assertEquals(3, storage.tamanho());
+
+        // 1. Remove a ocorrência mais recente da duplicata
+        boolean removido = storage.removerPorId("BOLSA-RESTART-DEL");
+        assertTrue(removido, "Primeira remoção deve ter sucesso no contexto original");
+        assertEquals(2, storage.tamanho());
+
+        // 2. Simula crash / encerramento da aplicação fechando o contexto Spring
+        applicationContext.close();
+        assertFalse(applicationContext.isActive(), "Contexto original deve estar encerrado");
+
+        // 3. Recria o contexto Spring do zero conectando ao mesmo PostgreSQL
+        org.springframework.boot.builder.SpringApplicationBuilder builder =
+                new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
+                        .profiles("infra")
+                        .properties(
+                                "spring.datasource.url=" + postgres.getJdbcUrl(),
+                                "spring.datasource.username=" + postgres.getUsername(),
+                                "spring.datasource.password=" + postgres.getPassword(),
+                                "spring.flyway.enabled=true"
+                        );
+
+        try (ConfigurableApplicationContext novoContexto = builder.run()) {
+            assertTrue(novoContexto.isActive());
+
+            EstoqueStorage novoStorage = novoContexto.getBean(EstoqueStorage.class);
+            assertEquals(2, novoStorage.tamanho(), "Tamanho pós-reinício deve permanecer 2");
+
+            // A ocorrência mais recente foi deletada duravelmente; a mais antiga sobreviveu
+            Optional<Bolsa> buscaDuplicata = novoStorage.buscarPorId("BOLSA-RESTART-DEL");
+            assertTrue(buscaDuplicata.isPresent(), "Ocorrência mais antiga deve sobreviver ao reinício");
+            assertEquals("Doador Antigo", buscaDuplicata.get().getDoador());
+            assertEquals(400.0, buscaDuplicata.get().getVolumeMl(), 0.001);
+
+            // Remove a ocorrência restante no segundo contexto
+            boolean removidoSegunda = novoStorage.removerPorId("BOLSA-RESTART-DEL");
+            assertTrue(removidoSegunda, "Segunda remoção deve ter sucesso no novo contexto");
+            assertEquals(1, novoStorage.tamanho());
+            assertTrue(novoStorage.buscarPorId("BOLSA-RESTART-DEL").isEmpty());
+        }
+
+        // 4. Recria um terceiro contexto Spring para atestar que a exclusão total é definitiva e durável
+        try (ConfigurableApplicationContext terceiroContexto = builder.run()) {
+            assertTrue(terceiroContexto.isActive());
+
+            EstoqueStorage terceiroStorage = terceiroContexto.getBean(EstoqueStorage.class);
+            assertEquals(1, terceiroStorage.tamanho(), "Apenas a outra bolsa deve restar no terceiro contexto");
+            assertTrue(terceiroStorage.buscarPorId("BOLSA-RESTART-DEL").isEmpty(),
+                    "Bolsa totalmente removida jamais deve reaparecer pós-reinício");
+            assertTrue(terceiroStorage.buscarPorId("BOLSA-RESTART-OUTRA").isPresent(),
+                    "Bolsa não removida deve permanecer intacta");
+        }
+    }
 }

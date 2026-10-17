@@ -166,9 +166,69 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
     }
 
     @Test
-    @DisplayName("Segregação H3: Deve lançar UnsupportedOperationException ao chamar removerPorId pois H3 está pendente")
-    void deveLancarUnsupportedOperationExceptionAoRemoverPorId() {
-        assertThrows(UnsupportedOperationException.class, () -> storage.removerPorId("BOLSA-001"));
+    @DisplayName("H3 / T3.1 / CA3.1: Deve remover bolsa existente fisicamente no PostgreSQL retornando true")
+    void deveRemoverBolsaExistenteERetornarTrueComRegistroFisicamenteDeletado() {
+        Bolsa bolsa = criarBolsa("BOLSA-DEL-01", "O+", 450.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "João Silva");
+        storage.salvar(bolsa);
+        assertEquals(1, storage.tamanho());
+
+        boolean removido = storage.removerPorId("BOLSA-DEL-01");
+
+        assertTrue(removido, "removerPorId deve retornar true para registro existente");
+        assertEquals(0, storage.tamanho(), "Tamanho deve decrementar para 0");
+        assertTrue(storage.buscarPorId("BOLSA-DEL-01").isEmpty(), "Registro não deve mais existir no banco");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2 / CA3.2: Deve retornar false ao tentar remover bolsa inexistente no PostgreSQL")
+    void deveRetornarFalseAoTentarRemoverInexistenteNoPostgreSql() {
+        boolean removido = storage.removerPorId("BOLSA-INEXISTENTE");
+        assertFalse(removido, "Deve retornar false quando nenhuma linha for afetada");
+        assertEquals(0, storage.tamanho(), "Tamanho deve permanecer inalterado");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.3 / CA3.3 / RN3.3: Deve remover exclusivamente a ocorrência mais recente sob IDs repetidos, preservando histórico anterior")
+    void deveRemoverApenasOcorrenciaMaisRecentePreservandoDuplicataMaisAntiga() {
+        Bolsa antiga = criarBolsa("BOLSA-DUP-DEL", "O+", 400.0, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 1), "Doador Antigo");
+        Bolsa recente = criarBolsa("BOLSA-DUP-DEL", "O+", 460.0, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 11, 2), "Doador Recente");
+
+        storage.salvar(antiga);
+        storage.salvar(recente);
+        assertEquals(2, storage.tamanho(), "Banco deve conter ambas as bolsas persistidas");
+
+        // Primeira remoção: deve deletar exclusivamente a mais recente (Doador Recente)
+        boolean removidoRecente = storage.removerPorId("BOLSA-DUP-DEL");
+        assertTrue(removidoRecente, "Primeira remoção deve ter sucesso");
+        assertEquals(1, storage.tamanho(), "Tamanho deve decrementar para 1");
+
+        Optional<Bolsa> buscaAposPrimeiraRemocao = storage.buscarPorId("BOLSA-DUP-DEL");
+        assertTrue(buscaAposPrimeiraRemocao.isPresent(), "Ocorrência mais antiga deve permanecer no banco");
+        assertEquals("Doador Antigo", buscaAposPrimeiraRemocao.get().getDoador());
+        assertEquals(400.0, buscaAposPrimeiraRemocao.get().getVolumeMl(), 0.001);
+
+        // Segunda remoção: deve deletar a ocorrência restante (Doador Antigo)
+        boolean removidoAntiga = storage.removerPorId("BOLSA-DUP-DEL");
+        assertTrue(removidoAntiga, "Segunda remoção deve ter sucesso");
+        assertEquals(0, storage.tamanho(), "Tamanho deve decrementar para 0");
+        assertTrue(storage.buscarPorId("BOLSA-DUP-DEL").isEmpty(), "Nenhuma ocorrência deve restar");
+
+        // Terceira remoção: ID não existe mais, deve retornar false
+        assertFalse(storage.removerPorId("BOLSA-DUP-DEL"), "Remoção subsequente deve retornar false");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2: Deve retornar false para remoção com id nulo, em branco ou excedendo 50 caracteres sem erro SQL")
+    void deveRetornarFalseParaIdNuloEmBrancoOuExcedendo50CaracteresEmRemoverPorId() {
+        assertFalse(storage.removerPorId(null));
+        assertFalse(storage.removerPorId("   "));
+        assertFalse(storage.removerPorId("A".repeat(51)));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2: Deve ser resiliente a tentativas de SQL Injection em removerPorId")
+    void deveSerResilienteAInjecaoSqlEmRemoverPorId() {
+        assertFalse(storage.removerPorId("' OR '1'='1"));
     }
 
     @Test

@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -360,5 +361,98 @@ class EstoqueControllerIT extends AbstractPostgresIT {
                 .andExpect(jsonPath("$.id", is("BOLSA-DUP-PONTUAL-INFRA")))
                 .andExpect(jsonPath("$.doador", is("Doador Recente")))
                 .andExpect(jsonPath("$.volumeMl", is(460.0)));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.3 / CA3.1 / Aceitação: DELETE /api/estoque/{id} deve remover bolsa e retornar 200 com envelope")
+    void deveRemoverBolsaComSucessoViaDelete() throws Exception {
+        String jsonPayload = """
+            {
+                "id": "BOLSA-DEL-REST",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Carlos Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonPayload))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/estoque/BOLSA-DEL-REST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(0)));
+
+        mockMvc.perform(get("/api/estoque/BOLSA-DEL-REST"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2 / CA3.2 / Aceitação: DELETE /api/estoque/{id} em bolsa inexistente deve retornar 404")
+    void deveRetornar404AoRemoverInexistente() throws Exception {
+        mockMvc.perform(delete("/api/estoque/BOLSA-INEXISTENTE"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("H3 / T3.3 / CA3.3 / Aceitação: DELETE /api/estoque/{id} com duplicatas deve remover mais recente e manter anterior")
+    void deveRemoverMaisRecenteEManterDuplicataAnterior() throws Exception {
+        String jsonDup1 = """
+            {
+                "id": "BOLSA-DUP-DEL-API",
+                "tipoSanguineo": "O+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador Antigo"
+            }
+            """;
+        String jsonDup2 = """
+            {
+                "id": "BOLSA-DUP-DEL-API",
+                "tipoSanguineo": "O+",
+                "volumeMl": 460.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Doador Recente"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup2))
+                .andExpect(status().isOk());
+
+        // 1. DELETE remove ocorrência mais recente (Doador Recente)
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-API"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(1)));
+
+        // 2. GET subsequente deve retornar a ocorrência anterior (Doador Antigo)
+        mockMvc.perform(get("/api/estoque/BOLSA-DUP-DEL-API"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is("BOLSA-DUP-DEL-API")))
+                .andExpect(jsonPath("$.doador", is("Doador Antigo")))
+                .andExpect(jsonPath("$.volumeMl", is(400.0)));
+
+        // 3. Segundo DELETE remove a ocorrência restante (Doador Antigo)
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-API"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(0)));
+
+        // 4. Terceiro DELETE: esgotadas as duplicatas, deve retornar 404
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-API"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("H3 / Aceitação: DELETE /api/estoque/{id} com ID excedendo 50 caracteres deve retornar 404")
+    void deveRetornar404AoRemoverComIdExcedendo50Caracteres() throws Exception {
+        mockMvc.perform(delete("/api/estoque/" + "B".repeat(51)))
+                .andExpect(status().isNotFound());
     }
 }

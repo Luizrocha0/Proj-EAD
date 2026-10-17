@@ -479,4 +479,57 @@ class EstoqueControllerCaracterizacaoTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.mensagem", containsString("doador não pode exceder 255 caracteres")));
     }
+
+    @Test
+    @DisplayName("H3 / Caracterização: DELETE /api/estoque/{id} com duplicatas sob perfil u1 deve remover a mais recente e manter anterior")
+    void deveRemoverMaisRecenteEManterDuplicataAnteriorSobPerfilU1() throws Exception {
+        String jsonDup1 = """
+            {
+                "id": "BOLSA-DUP-DEL-U1",
+                "tipoSanguineo": "O+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador Antigo"
+            }
+            """;
+        String jsonDup2 = """
+            {
+                "id": "BOLSA-DUP-DEL-U1",
+                "tipoSanguineo": "O+",
+                "volumeMl": 460.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Doador Recente"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup2))
+                .andExpect(status().isOk());
+
+        // 1. DELETE remove mais recente
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-U1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(1)));
+
+        // 2. GET subsequente recupera a anterior
+        mockMvc.perform(get("/api/estoque/BOLSA-DUP-DEL-U1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is("BOLSA-DUP-DEL-U1")))
+                .andExpect(jsonPath("$.doador", is("Doador Antigo")))
+                .andExpect(jsonPath("$.volumeMl", is(400.0)));
+
+        // 3. Segundo DELETE remove a anterior
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-U1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(0)));
+
+        // 4. Terceiro DELETE retorna 404
+        mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-U1"))
+                .andExpect(status().isNotFound());
+    }
 }

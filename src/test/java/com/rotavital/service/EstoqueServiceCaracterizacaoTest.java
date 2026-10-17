@@ -145,5 +145,30 @@ class EstoqueServiceCaracterizacaoTest {
     void deveRetornarFalseAoRemoverIdNuloOuEmBranco() {
         assertFalse(service.remover(null));
         assertFalse(service.remover("   "));
+        assertFalse(service.removerBolsa(null));
+        assertFalse(service.removerBolsa("   "));
+    }
+
+    @Test
+    @DisplayName("H3 / Caracterização: removerBolsa deve remover apenas a ocorrência mais recente em caso de duplicatas")
+    void deveRemoverBolsaApenasOcorrenciaMaisRecenteEmDuplicatas() {
+        Bolsa antiga = criarBolsa("BOLSA-DUP-RB", "O+", 450.0, "Doador Antigo");
+        Bolsa recente = criarBolsa("BOLSA-DUP-RB", "O+", 460.0, "Doador Recente");
+
+        service.adicionar(antiga);
+        service.adicionar(recente);
+        assertEquals(2, service.tamanho());
+
+        boolean removido = service.removerBolsa("BOLSA-DUP-RB");
+        assertTrue(removido);
+        assertEquals(1, service.tamanho());
+
+        Optional<Bolsa> restante = service.consultar("BOLSA-DUP-RB");
+        assertTrue(restante.isPresent());
+        assertEquals("Doador Antigo", restante.get().getDoador());
+
+        assertTrue(service.removerBolsa("BOLSA-DUP-RB"));
+        assertEquals(0, service.tamanho());
+        assertFalse(service.removerBolsa("BOLSA-DUP-RB"));
     }
 }
