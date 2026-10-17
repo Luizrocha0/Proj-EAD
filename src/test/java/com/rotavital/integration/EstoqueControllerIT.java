@@ -71,4 +71,48 @@ class EstoqueControllerIT extends AbstractPostgresIT {
         mockMvc.perform(get("/api/estoque/BOLSA-INEXISTENTE"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("H1 / Aceitação: POST com dados inválidos sob perfil infra deve retornar 400 Bad Request")
+    void deveRetornar400ParaPayloadInvalidoSobPerfilInfra() throws Exception {
+        String jsonInvalido = """
+            {
+                "id": "   ",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonInvalido))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("H1 / Aceitação: POST deve normalizar tipo sanguíneo com espaços/minúsculas no PostgreSQL")
+    void deveCadastrarComTipoSanguineoNormalizadoSobPerfilInfra() throws Exception {
+        String jsonNormalizar = """
+            {
+                "id": "BOLSA-NORM-INFRA",
+                "tipoSanguineo": "  b+  ",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Carlos"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonNormalizar))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque/BOLSA-NORM-INFRA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipoSanguineo", is("B+")));
+    }
 }

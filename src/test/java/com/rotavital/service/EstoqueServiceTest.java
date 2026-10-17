@@ -94,4 +94,27 @@ class EstoqueServiceTest {
 
         assertThrows(DataAccessException.class, () -> service.adicionar(bolsa));
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar adicionar bolsa nula com fail-fast")
+    void deveRejeitarAdicionarBolsaNula() {
+        assertThrows(NullPointerException.class, () -> service.adicionar(null));
+        verifyNoInteractions(storage);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para id nulo ou em branco sem delegar ao storage")
+    void deveRetornarVazioAoConsultarIdNuloOuEmBrancoSemDelegar() {
+        assertTrue(service.consultar(null).isEmpty());
+        assertTrue(service.consultar("   ").isEmpty());
+        verifyNoInteractions(storage);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo ou em branco sem delegar ao storage")
+    void deveRetornarFalseAoRemoverIdNuloOuEmBrancoSemDelegar() {
+        assertFalse(service.remover(null));
+        assertFalse(service.remover("   "));
+        verifyNoInteractions(storage);
+    }
 }

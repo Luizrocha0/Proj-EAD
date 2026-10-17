@@ -108,4 +108,24 @@ class EstoqueServiceCaracterizacaoTest {
         service.remover("B-1");
         assertEquals(1, service.tamanho());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar adicionar bolsa nula com fail-fast")
+    void deveRejeitarAdicionarBolsaNula() {
+        assertThrows(NullPointerException.class, () -> service.adicionar(null));
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio ao consultar id nulo ou em branco")
+    void deveRetornarVazioAoConsultarIdNuloOuEmBranco() {
+        assertTrue(service.consultar(null).isEmpty());
+        assertTrue(service.consultar("   ").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar false ao remover id nulo ou em branco")
+    void deveRetornarFalseAoRemoverIdNuloOuEmBranco() {
+        assertFalse(service.remover(null));
+        assertFalse(service.remover("   "));
+    }
 }

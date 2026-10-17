@@ -97,4 +97,17 @@ class JdbcEstoqueStorageIT extends AbstractPostgresIT {
         Optional<Bolsa> resultado = storage.buscarPorId("BOLSA-INEXISTENTE");
         assertTrue(resultado.isEmpty());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para ID nulo ou em branco sem erro SQL")
+    void deveRetornarVazioParaIdNuloOuEmBranco() {
+        assertTrue(storage.buscarPorId(null).isEmpty());
+        assertTrue(storage.buscarPorId("   ").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar salvar bolsa nula no PostgreSQL com fail-fast")
+    void deveRejeitarSalvarBolsaNula() {
+        assertThrows(NullPointerException.class, () -> storage.salvar(null));
+    }
 }
