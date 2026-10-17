@@ -42,3 +42,10 @@ aed-c/tests/*.exe
 __pycache__/
 *.py[cod]
 .venv-bench/
+
+# ── Variáveis de Ambiente e Segredos ──
+.env
+.env.*
+!.env.example
+# ── Agentes e Metadados Locais ──
+.agents/
