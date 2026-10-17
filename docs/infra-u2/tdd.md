@@ -155,7 +155,7 @@ A comprovação da persistência durável no PostgreSQL através do **Docker Com
 
 3. **Confirmação Direta no Banco PostgreSQL Real:**
    ```bash
-   docker compose exec db psql -U rotavital -d rotavital -c "SELECT id_seq, id, tipo_sanguineo, volume_ml, doador FROM bolsas;"
+   docker compose exec -e PGPASSWORD=rotavital db psql -U rotavital -d rotavital -c "SELECT id_seq, id, tipo_sanguineo, volume_ml, doador FROM bolsas;"
    ```
    *Evidência observável: Registro persistido fisicamente na tabela com `id_seq = 1`.*
 

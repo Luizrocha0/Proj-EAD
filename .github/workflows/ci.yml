@@ -134,10 +134,10 @@ jobs:
       - name: Aguardar serviços atingirem estado saudável
         run: |
           echo "Aguardando contêineres atingirem status 'healthy'..."
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             API_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-api 2>/dev/null || echo '"starting"')
             DB_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-db 2>/dev/null || echo '"starting"')
-            echo "Tentativa $i/30: API=$API_HEALTH, DB=$DB_HEALTH"
+            echo "Tentativa $i/45: API=$API_HEALTH, DB=$DB_HEALTH"
             if [ "$API_HEALTH" = '"healthy"' ] && [ "$DB_HEALTH" = '"healthy"' ]; then
               echo "✅ Todos os serviços do Compose estão saudáveis!"
               break
@@ -145,6 +145,11 @@ jobs:
             sleep 2
           done
           docker compose ps
+          if [ "$API_HEALTH" != '"healthy"' ] || [ "$DB_HEALTH" != '"healthy"' ]; then
+            echo "❌ Erro: Timeout aguardando contêineres atingirem status 'healthy' (API=$API_HEALTH, DB=$DB_HEALTH)"
+            docker compose logs
+            exit 1
+          fi
 
       - name: Smoke Test — Actuator Health (Perfil Infra + PostgreSQL)
         run: |
@@ -152,11 +157,45 @@ jobs:
           echo "Resposta do Actuator: $HEALTH_RESP"
           echo "$HEALTH_RESP" | grep '"status":"UP"'
 
-      - name: Smoke Test — API REST Funcional do Estoque
+      - name: Smoke Test — API REST Funcional (CRUD Completo com PostgreSQL Real)
         run: |
-          ESTOQUE_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
-          echo "Resposta do Estoque: $ESTOQUE_RESP"
-          echo "$ESTOQUE_RESP" | grep '"bolsas"'
+          echo "1. Validando listagem inicial vazia..."
+          INITIAL_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta inicial: $INITIAL_RESP"
+          echo "$INITIAL_RESP" | grep '"bolsas"'
+          echo "$INITIAL_RESP" | grep '"tamanho":0'
+
+          echo "2. Cadastrando bolsa de teste (H1)..."
+          POST_RESP=$(curl --fail -s -X POST http://localhost:8080/api/estoque \
+            -H "Content-Type: application/json" \
+            -d '{"id":"SMOKE-CI-01","tipoSanguineo":"AB+","volumeMl":450.0,"dataColeta":"2026-10-17","validade":"2026-12-17","doador":"Smoke CI"}')
+          echo "Resposta POST: $POST_RESP"
+          echo "$POST_RESP" | grep '"mensagem"'
+          echo "$POST_RESP" | grep '"tamanho":1'
+
+          echo "3. Consultando bolsa pelo ID (H1)..."
+          GET_ID_RESP=$(curl --fail -s http://localhost:8080/api/estoque/SMOKE-CI-01)
+          echo "Resposta GET ID: $GET_ID_RESP"
+          echo "$GET_ID_RESP" | grep '"SMOKE-CI-01"'
+          echo "$GET_ID_RESP" | grep '"Smoke CI"'
+
+          echo "4. Validando listagem com bolsa cadastrada (H2)..."
+          LIST_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta GET Lista: $LIST_RESP"
+          echo "$LIST_RESP" | grep '"tamanho":1'
+          echo "$LIST_RESP" | grep '"SMOKE-CI-01"'
+
+          echo "5. Removendo bolsa de teste (H3)..."
+          DEL_RESP=$(curl --fail -s -X DELETE http://localhost:8080/api/estoque/SMOKE-CI-01)
+          echo "Resposta DELETE: $DEL_RESP"
+          echo "$DEL_RESP" | grep '"mensagem":"Bolsa removida"'
+          echo "$DEL_RESP" | grep '"tamanho":0'
+
+          echo "6. Confirmando listagem vazia após remoção..."
+          FINAL_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta final: $FINAL_RESP"
+          echo "$FINAL_RESP" | grep '"tamanho":0'
+          echo "✅ Smoke Test de ponta a ponta (Actuator + CRUD PostgreSQL) aprovado!"
 
       - name: Coletar logs e encerrar ambiente containerizado
         if: always()
@@ -183,7 +222,13 @@ jobs:
             echo "❌ RENDER_DEPLOY_HOOK_URL não configurado."
             exit 1
           fi
-          curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}&ref=${{ github.sha }}"
+          URL="${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          if echo "$URL" | grep -q '?'; then
+            HOOK_URL="${URL}&ref=${{ github.sha }}"
+          else
+            HOOK_URL="${URL}?ref=${{ github.sha }}"
+          fi
+          curl --fail -X POST "$HOOK_URL"
           echo "✅ Deploy disparado no Render para o commit ${{ github.sha }}"
 
       - name: Aguardar e verificar URL pública
