@@ -727,28 +727,51 @@ A rastreabilidade e cobertura de H2 foi implementada e validada em 3 níveis:
 
 ---
 
-### 4. Validação de Não-Regressão Geral
+### 4. Auditoria Adversarial e Blindagem R1 da Etapa 4 (Revisão Adversarial)
 
-- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
-- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **130 testes aprovados** (`mvnw.cmd test`, tempo ~12.4s, 0 falhas, 0 erros).
-- **Compilação Limpa:** 18/18 classes de teste compiladas sem erros (`mvnw.cmd test-compile`).
+Uma auditoria adversarial e cética foi executada sobre a implementação da Etapa 4, identificando defeitos de isolamento de testes e de robustez contratual:
+
+1. **Defeito Crítico de Poluição de Estado no Teste de Integração `BolsaPersistidaIT`:**
+   - **Diagnóstico:** Em `BolsaPersistidaIT`, ao contrário de `JdbcEstoqueStorageIT` e `EstoqueControllerIT`, não havia injeção de `JdbcTemplate` nem método `@BeforeEach` executando `DELETE FROM bolsas`.
+   - **Causa Raiz:** Como o contêiner Testcontainers PostgreSQL é `public static final` e compartilhado na classe base `AbstractPostgresIT`, a bolsa gravada pelo primeiro teste (`devePersistirBolsaAposReinicioContexto`, `BOLSA-RESTART-001`) permanecia gravada na tabela. Na execução em ambiente com Docker ativo, o segundo teste (`devePreservarListagemEOrdemLIFOAposReinicioContexto`) inseria mais 3 bolsas, elevando o total da tabela para 4. As asserções `assertEquals(3, storage.tamanho())` e `assertEquals(3, bolsasAposReinicio.size())` falhariam com `expected: <3> but was: <4>`.
+   - **Correção:** Injetou-se `JdbcTemplate` e adicionou-se `@BeforeEach void setUp() { jdbcTemplate.execute("DELETE FROM bolsas"); }`, garantindo isolamento total e banco limpo no início de cada método de teste.
+
+2. **Eliminação de Consulta Redundante e Risco de Skew Concorrente em `EstoqueController.listar()`:**
+   - **Diagnóstico:** `EstoqueController.listar()` chamava `estoqueService.tamanho()` para compor a chave `"tamanho"` do envelope JSON retornado. No perfil `infra`, isso disparava uma segunda consulta SQL desnecessária (`SELECT COUNT(*) FROM bolsas`). Em ambientes com escritas concorrentes, uma inserção ou deleção ocorrendo entre `listarEstoque()` e `tamanho()` produziria um envelope desbalanceado (ex: array `bolsas` com 2 elementos e `"tamanho": 3`). Além disso, caso `listarEstoque()` retornasse nulo em cenários de mocks adversariais, um `NullPointerException` desprotegido seria lançado.
+   - **Correção:** O envelope agora deriva o tamanho estritamente de `lista.size()`, eliminando o roundtrip redundante ao banco de dados e garantindo consistência atômica do envelope `{"bolsas": [...], "tamanho": N}`. Adicionou-se salvaguarda defensiva contra nulos.
+
+3. **Criação da Bateria de Testes Unitários Puros de Nível 1 para `EstoqueController`:**
+   - **Diagnóstico:** `EstoqueController` era testado exclusivamente via `EstoqueControllerCaracterizacaoTest` (teste `@SpringBootTest` com inicialização pesada do contexto em ~10.4s) e `EstoqueControllerIT` (teste de aceitação com banco). Não havia testes unitários rápidos e isolados (Nível 1) com mock direto do `EstoqueService`.
+   - **Correção:** Criou-se `EstoqueControllerTest` com 12 testes unitários isolados cobrindo: montagem do envelope padronizado, verificação de que `estoqueService.tamanho()` não é chamado em `listar()`, tratamento de estoque vazio, lista nula, propagação fail-fast de `DataAccessException`, consistência atômica sob skew concorrente simulado, cadastro, consultas e remoções.
+
+4. **Uniformização de Mutabilidade em `ListaEstoqueStorage.listar()`:**
+   - `ListaEstoqueStorage.listar()` agora retorna `new ArrayList<>(Arrays.asList(...))`, garantindo paridade total de contrato de mutabilidade com o `ArrayList` retornado por `JdbcEstoqueStorage.listar()`.
 
 ---
 
-### 5. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
+### 5. Validação de Não-Regressão Geral
 
-- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída**.
+- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
+- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** **142 testes aprovados** (`mvnw.cmd test`, tempo ~20.6s, 0 falhas, 0 erros, 0 pulados).
+- **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`mvnw.cmd test-compile`).
+
+---
+
+### 6. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída e Auditada (Revisão Adversarial R1)**.
 - **Mudanças:** 
   - Adição do método `List<Bolsa> listar()` na interface `EstoqueStorage`.
-  - Implementação de `listar()` em `ListaEstoqueStorage` (`@Profile({"u1", "default"})`), retornando `Arrays.asList(listaEstoque.toArray())` e preservando a ordem LIFO da cabeça para cauda.
+  - Implementação de `listar()` em `ListaEstoqueStorage` (`@Profile({"u1", "default"})`), retornando `new ArrayList<>(Arrays.asList(listaEstoque.toArray()))` e preservando a ordem LIFO da cabeça para cauda.
   - Implementação de `listar()` em `JdbcEstoqueStorage` (`@Profile("infra")`), executando query SQL com `ORDER BY id_seq DESC` sob `@Transactional(readOnly = true)`, retornando lista vazia quando o banco estiver limpo, suportando múltiplas ocorrências de IDs duplicados e propagando falhas sem fallback silencioso para memória.
-  - Integração do método `listarEstoque()` em `EstoqueService` e refatoração do endpoint `GET /api/estoque` em `EstoqueController` para retornar o envelope JSON padronizado `{"bolsas": [...], "tamanho": N}`, inclusive para estoque vazio (`{"bolsas": [], "tamanho": 0}`).
-  - Bateria de testes nos três níveis: unitários (130 testes no Surefire), integração com PostgreSQL (ordem LIFO, IDs duplicados e reinício do contexto Spring) e aceitação REST sob perfil `infra`.
+  - Integração do método `listarEstoque()` em `EstoqueService` e refatoração do endpoint `GET /api/estoque` em `EstoqueController` para retornar o envelope JSON padronizado `{"bolsas": [...], "tamanho": N}`, com tamanho derivado deterministicamente de `lista.size()`, sem queries SQL duplicadas.
+  - Correção de poluição de estado cruzada em `BolsaPersistidaIT` com `@BeforeEach` para limpeza da tabela `bolsas`.
+  - Criação de `EstoqueControllerTest` com 12 testes unitários puros isolados no Nível 1.
   - A história H3 (remoção persistente) permanece estritamente pendente para a Etapa 5, com testes comprovando lançamento de `UnsupportedOperationException`.
 - **Verificação:** 
-  - 130/130 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~12.4s).
-  - 18/18 classes de testes compiladas com sucesso via `.\mvnw.cmd test-compile`.
+  - 142/142 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~20.6s).
+  - 19/19 classes de testes compiladas com sucesso via `.\mvnw.cmd test-compile`.
   - Sequência rastreável Red → Green comprovada com commits no Git (`test:` e `feat:`).
   - 54/54 testes em C aprovados (lista e fila encadeadas da U1).
   - 7/7 testes de benchmarks em Python aprovados e verificação `--check` consistente.
