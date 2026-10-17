@@ -280,6 +280,18 @@ class JdbcEstoqueStorageTest {
     }
 
     @Test
+    @DisplayName("H3 / T3.2: Deve preservar encoding UTF-8 e símbolos ao executar removerPorId")
+    void devePreservarEncodingUtf8ESimbolosAoRemoverPorId() {
+        String idUtf8 = "BOLSA_UTF8-01/2026-João";
+        when(jdbcTemplate.update(anyString(), eq(idUtf8))).thenReturn(1);
+
+        boolean removido = storage.removerPorId(idUtf8);
+
+        assertTrue(removido);
+        verify(jdbcTemplate, times(1)).update(anyString(), eq(idUtf8));
+    }
+
+    @Test
     @DisplayName("Adversarial: Deve preservar encoding UTF-8 com acentuação e caracteres especiais em doador e ID")
     void devePreservarEncodingUtf8ECaracteresEspeciais() {
         String idComSimbolos = "BOLSA_001-A/2026";
