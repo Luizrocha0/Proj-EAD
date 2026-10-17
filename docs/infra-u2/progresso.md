@@ -749,28 +749,56 @@ Uma auditoria adversarial e cética foi executada sobre a implementação da Eta
 
 ---
 
-### 5. Validação de Não-Regressão Geral
+### 5. Auditoria Adversarial e Blindagem R2 da Etapa 4 (Revisão Adversarial R2)
+
+Uma segunda rodada adversarial cética e independente (R2) foi executada, realizando auditoria de contratos frente ao Story Map da Release 1 e análise estrita de casos de borda:
+
+1. **Implementação do Teste de Aceitação Ausente `deveConsultarBolsaExistenteRetornandoMaisRecente` em `EstoqueControllerIT`:**
+   - **Diagnóstico:** O Story Map da Release 1 (`docs/infra-u2/story-map.md`, linhas 151 e 236) exige explicitamente o teste de aceitação de Nível 3 `EstoqueControllerIT.deveConsultarBolsaExistenteRetornandoMaisRecente()` para comprovar que o endpoint `GET /api/estoque/{id}` retorna a ocorrência mais recente cadastrada sob IDs duplicados no PostgreSQL Real (CA2.4 / RN2.5). Esse teste havia sido omitido.
+   - **Correção:** Implementado o teste de aceitação em `EstoqueControllerIT`, realizando `POST` com duas bolsas de mesmo ID e assertando via MockMvc que o `GET /api/estoque/{id}` retorna HTTP 200 com os dados exclusivos da ocorrência mais recente.
+
+2. **Criação do Teste Simétrico em `EstoqueControllerCaracterizacaoTest` (Perfil `u1`):**
+   - **Diagnóstico:** O teste de caracterização da API REST sob o perfil em memória `u1` não possuía verificação pontual de consulta por ID duplicado via HTTP.
+   - **Correção:** Adicionado o teste `deveConsultarOcorrenciaMaisRecenteDeBolsaDuplicadaViaApiSobPerfilU1`, comprovando paridade total de comportamento entre `u1` e `infra`.
+
+3. **Blindagem Defensiva contra Elementos Nulos em `EstoqueController.listar()`:**
+   - **Diagnóstico:** Em `EstoqueController.listar()`, a iteração sobre `bolsas` não verificava `if (b != null)` antes de acessar os getters do domínio. Caso uma coleção esparsa com elemento nulo fosse fornecida, dispararia `NullPointerException`.
+   - **Correção:** Adicionada salvaguarda `if (b != null)` e criado o teste unitário puro `deveIgnorarElementosNulosNaListaDeEstoquePreservandoConsistenciaDeTamanho` em `EstoqueControllerTest`.
+
+4. **Guarda de Fronteira de Tamanho Máximo de ID ($\le 50$) em `EstoqueService` e `ListaEstoqueStorage`:**
+   - **Diagnóstico:** Em conformidade com o limite DDL `VARCHAR(50)` definido na migração Flyway e já tratado em `JdbcEstoqueStorage`, IDs excedendo 50 caracteres agora retornam fail-fast (`Optional.empty()` / `false`) diretamente em `EstoqueService` e `ListaEstoqueStorage`, prevenindo chamadas ou percursos desnecessários.
+   - **Correção:** Adicionada validação de limite e atualizados os testes unitários em `EstoqueServiceTest` e `ListaEstoqueStorageTest`.
+
+5. **Reforço de Asserção Pós-Reinício em `BolsaPersistidaIT`:**
+   - **Diagnóstico:** `BolsaPersistidaIT.devePreservarListagemEOrdemLIFOAposReinicioContexto` verificava a listagem geral pós-reinício, mas não realizava busca pontual por ID duplicado no novo contexto.
+   - **Correção:** Adicionada asserção comprovando que `novoStorage.buscarPorId("BOLSA-LIFO-01")` recupera a ocorrência mais recente após o reinício da aplicação.
+
+---
+
+### 6. Validação de Não-Regressão Geral
 
 - **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
 - **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **142 testes aprovados** (`mvnw.cmd test`, tempo ~20.6s, 0 falhas, 0 erros, 0 pulados).
+- **Suíte Completa Java:** **144 testes aprovados** (`mvnw.cmd test`, tempo ~19.0s, 0 falhas, 0 erros, 0 pulados).
 - **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`mvnw.cmd test-compile`).
 
 ---
 
-### 6. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
+### 7. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
 
-- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída e Auditada (Revisão Adversarial R1)**.
+- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída e Auditada (Revisão Adversarial R2 - Fechamento Definitivo)**.
 - **Mudanças:** 
   - Adição do método `List<Bolsa> listar()` na interface `EstoqueStorage`.
   - Implementação de `listar()` em `ListaEstoqueStorage` (`@Profile({"u1", "default"})`), retornando `new ArrayList<>(Arrays.asList(listaEstoque.toArray()))` e preservando a ordem LIFO da cabeça para cauda.
   - Implementação de `listar()` em `JdbcEstoqueStorage` (`@Profile("infra")`), executando query SQL com `ORDER BY id_seq DESC` sob `@Transactional(readOnly = true)`, retornando lista vazia quando o banco estiver limpo, suportando múltiplas ocorrências de IDs duplicados e propagando falhas sem fallback silencioso para memória.
   - Integração do método `listarEstoque()` em `EstoqueService` e refatoração do endpoint `GET /api/estoque` em `EstoqueController` para retornar o envelope JSON padronizado `{"bolsas": [...], "tamanho": N}`, com tamanho derivado deterministicamente de `lista.size()`, sem queries SQL duplicadas.
   - Correção de poluição de estado cruzada em `BolsaPersistidaIT` com `@BeforeEach` para limpeza da tabela `bolsas`.
-  - Criação de `EstoqueControllerTest` com 12 testes unitários puros isolados no Nível 1.
+  - Criação de `EstoqueControllerTest` com 13 testes unitários puros isolados no Nível 1.
+  - Implementação do teste de aceitação CA2.4/T2.3 `deveConsultarBolsaExistenteRetornandoMaisRecente()` em `EstoqueControllerIT` e caracterização simétrica em `EstoqueControllerCaracterizacaoTest`.
+  - Blindagem contra elementos nulos na lista e fronteira de 50 caracteres em `EstoqueService` e `ListaEstoqueStorage`.
   - A história H3 (remoção persistente) permanece estritamente pendente para a Etapa 5, com testes comprovando lançamento de `UnsupportedOperationException`.
 - **Verificação:** 
-  - 142/142 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~20.6s).
+  - 144/144 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~19.0s).
   - 19/19 classes de testes compiladas com sucesso via `.\mvnw.cmd test-compile`.
   - Sequência rastreável Red → Green comprovada com commits no Git (`test:` e `feat:`).
   - 54/54 testes em C aprovados (lista e fila encadeadas da U1).
