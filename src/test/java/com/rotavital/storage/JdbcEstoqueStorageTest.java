@@ -221,14 +221,62 @@ class JdbcEstoqueStorageTest {
     }
 
     @Test
-    @DisplayName("Segregação H3: Deve lançar UnsupportedOperationException ao chamar removerPorId pois H3 está pendente")
-    void deveLancarUnsupportedOperationExceptionAoRemoverPorIdPoisH3EstaPendente() {
-        UnsupportedOperationException ex = assertThrows(
-                UnsupportedOperationException.class,
-                () -> storage.removerPorId("BOLSA-001")
-        );
-        assertTrue(ex.getMessage().contains("Pendente para Etapa 5 (H3)"));
+    @DisplayName("H3 / T3.2: Deve executar DELETE atômico com subquery para a ocorrência de maior id_seq e retornar true")
+    void deveExecutarDeleteAtomicoComSubqueryIdSeqMaisRecenteERetornarTrue() {
+        when(jdbcTemplate.update(anyString(), eq("BOLSA-001"))).thenReturn(1);
+
+        boolean removido = storage.removerPorId("BOLSA-001");
+
+        assertTrue(removido);
+        org.mockito.ArgumentCaptor<String> sqlCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, times(1)).update(sqlCaptor.capture(), eq("BOLSA-001"));
+
+        String sql = sqlCaptor.getValue();
+        assertTrue(sql.contains("DELETE FROM bolsas"), "Deve conter DELETE FROM bolsas");
+        assertTrue(sql.contains("WHERE id_seq = ("), "Deve usar subquery id_seq = (");
+        assertTrue(sql.contains("SELECT id_seq FROM bolsas WHERE id = ?"), "Subquery deve filtrar por id = ?");
+        assertTrue(sql.contains("ORDER BY id_seq DESC"), "Subquery deve ordenar por id_seq DESC");
+        assertTrue(sql.contains("LIMIT 1"), "Subquery deve limitar em 1 ocorrência mais recente");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2: Deve retornar false quando DELETE afetar zero linhas (bolsa inexistente ou estoque vazio)")
+    void deveRetornarFalseQuandoDeleteAfetarZeroLinhas() {
+        when(jdbcTemplate.update(anyString(), eq("BOLSA-INEXISTENTE"))).thenReturn(0);
+
+        boolean removido = storage.removerPorId("BOLSA-INEXISTENTE");
+
+        assertFalse(removido);
+        verify(jdbcTemplate, times(1)).update(anyString(), eq("BOLSA-INEXISTENTE"));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2: Deve retornar false para ID nulo, em branco ou excedendo 50 caracteres sem executar SQL")
+    void deveRetornarFalseParaIdNuloEmBrancoOuExcedendo50CaracteresSemExecutarSql() {
+        assertFalse(storage.removerPorId(null));
+        assertFalse(storage.removerPorId("   "));
+        assertFalse(storage.removerPorId("A".repeat(51)));
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2: Deve fazer trim no ID antes de executar DELETE")
+    void deveFazerTrimNoIdAntesDeExecutarDelete() {
+        when(jdbcTemplate.update(anyString(), eq("BOLSA-TRIM"))).thenReturn(1);
+
+        boolean removido = storage.removerPorId("   BOLSA-TRIM   ");
+
+        assertTrue(removido);
+        verify(jdbcTemplate, times(1)).update(anyString(), eq("BOLSA-TRIM"));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.2 / Fail-Fast: Deve propagar DataAccessException imediatamente sem fallback quando DELETE falhar")
+    void devePropagarDataAccessExceptionSemFallbackQuandoDeleteFalhar() {
+        when(jdbcTemplate.update(anyString(), eq("BOLSA-FAIL")))
+                .thenThrow(new DataAccessException("Simulando falha de I/O no DELETE do PostgreSQL") {});
+
+        assertThrows(DataAccessException.class, () -> storage.removerPorId("BOLSA-FAIL"));
     }
 
     @Test
