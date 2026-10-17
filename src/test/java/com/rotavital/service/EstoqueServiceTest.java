@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -116,5 +117,26 @@ class EstoqueServiceTest {
         assertFalse(service.remover(null));
         assertFalse(service.remover("   "));
         verifyNoInteractions(storage);
+    }
+
+    @Test
+    @DisplayName("H2 / T2.3: Deve delegar listarEstoque para storage.listar()")
+    void deveDelegarListarEstoqueParaStorageListar() {
+        List<Bolsa> bolsas = List.of(criarBolsa("B-1"), criarBolsa("B-2"));
+        when(storage.listar()).thenReturn(bolsas);
+
+        List<Bolsa> resultado = service.listarEstoque();
+
+        assertSame(bolsas, resultado);
+        verify(storage, times(1)).listar();
+    }
+
+    @Test
+    @DisplayName("H2 / T2.3: Deve propagar exceção de persistência em listarEstoque sem fallback")
+    void devePropagarExcecaoQuandoListarEstoqueFalhar() {
+        when(storage.listar()).thenThrow(new DataAccessException("Falha de I/O na consulta") {});
+
+        assertThrows(DataAccessException.class, () -> service.listarEstoque());
+        verify(storage, times(1)).listar();
     }
 }

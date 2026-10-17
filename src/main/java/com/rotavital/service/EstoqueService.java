@@ -5,6 +5,7 @@ import com.rotavital.storage.EstoqueStorage;
 import com.rotavital.storage.ListaEstoqueStorage;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -74,5 +75,12 @@ public class EstoqueService {
      */
     public Bolsa[] listarTodas() {
         return storage.listarTodas();
+    }
+
+    /**
+     * Lista todas as bolsas no estoque como List delegando para o storage (H2).
+     */
+    public List<Bolsa> listarEstoque() {
+        throw new UnsupportedOperationException("Stub para ciclo TDD Red T2.3");
     }
 }
