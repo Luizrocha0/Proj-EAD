@@ -95,13 +95,13 @@ A arquitetura de testes do Rota Vital foi estruturada em três níveis bem delim
 | **Novos TDD U2 — DTO (Java)** | `BolsaRequestDTOTest.java` | 17 testes | Resiliência de tipos (String vs Double), `NaN`/`Infinity`, ISO-8601. |
 | **Novos TDD U2 — Perfis (Java)** | `EstoqueService*ProfileInjectionTest.java` | 2 testes | Comprovação de injeção correta nos perfis `u1` e `infra`. |
 | **Novos TDD U2 — Expansões** | `ListaEstoqueTest.java` (+3) | 3 testes | Remoção de duplicatas no meio da lista encadeada e `removerPorId`. |
-| **Novos TDD U2 — Integração IT** | `JdbcEstoqueStorageIT.java` | 16 testes | Operações DML diretas contra PostgreSQL 16 Real via Testcontainers. |
+| **Novos TDD U2 — Integração IT** | `JdbcEstoqueStorageIT.java` | 19 testes | Operações DML diretas contra PostgreSQL 16 Real via Testcontainers. |
 | **Novos TDD U2 — Persistência IT** | `BolsaPersistidaIT.java` | 3 testes | Comprovação de sobrevivência após destruição e recriação de contexto. |
 | **Novos TDD U2 — Aceitação IT** | `EstoqueControllerIT.java` | 17 testes | Aceitação HTTP de ponta a ponta com banco real (PostgreSQL). |
 
 **Totais Auditados:**
 - Testes Unitários e de Caracterização Java (Surefire): **183 testes aprovados** (0 falhas, 0 erros, 0 pulados).
-- Métodos de Teste de Integração e Aceitação Java (Failsafe): **36 métodos em 3 classes IT** executados contra Testcontainers.
+- Métodos de Teste de Integração e Aceitação Java (Failsafe): **39 métodos em 3 classes IT** executados contra Testcontainers.
 - Testes em C (AED U1): **54 asserções aprovadas** com sanitizers.
 - Testes em Python (SO U1): **7 testes unitários aprovados** + 8 configurações auditadas.
 

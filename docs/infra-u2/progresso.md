@@ -1046,10 +1046,8 @@ O roteiro de demonstração operacional da persistência relacional da Release 1
 Foi criado o documento exaustivo `docs/infra-u2/tdd.md` contendo:
 - Metodologia Red → Green → Refactor adotada na U2.
 - Segregação de testes em 3 níveis (Unitário, Integração e Aceitação).
-- Diferenciação detalhada entre o patrimônio acadêmico da U1 (54 asserções C, 7 testes Python, 48 testes Java U1) e as novas baterias da U2 (183 testes unitários e de caracterização Java + 36 métodos de integração e aceitação IT).
+- Diferenciação detalhada entre o patrimônio acadêmico da U1 (54 asserções C, 7 testes Python, 48 testes Java U1) e as novas baterias da U2 (183 testes unitários e de caracterização Java + 39 métodos de integração e aceitação IT em 3 classes: 19 em JdbcEstoqueStorageIT, 17 em EstoqueControllerIT e 3 em BolsaPersistidaIT).
 - Matriz completa de rastreabilidade de todas as tarefas de H1, H2, H3 e caracterização da U1, associando história, teste, comando, falha Red, commit de implementação Green e resultado auditado.
-
----
 
 ---
 
@@ -1086,28 +1084,60 @@ Uma auditoria adversarial minuciosa foi conduzida para tensionar a implementaç�
 
 ---
 
-### 6. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+### 6. Auditoria Adversarial (Round 2 — teamwork_preview_reviewer)
 
-- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída e Auditada (Revisão Adversarial R1 - Fechamento Definitivo)**.
+Uma segunda rodada adversarial aprofundou a validação de consistência e segurança da esteira e documentação:
+
+1. **Inconsistência Factual de Contagem dos Métodos de Teste IT:**
+   - **Cenário:** Verificação da contagem de métodos `@Test` executados pelo Failsafe/Testcontainers em `src/test/java/com/rotavital/integration/`.
+   - **Falha detectada:** Documentava-se "16 testes em `JdbcEstoqueStorageIT`" e "36 métodos em 3 classes IT", repetindo números anteriores da Etapa 4 e desconsiderando as expansões da Etapa 5 (fronteira de 50 chars, tripla duplicata sucessiva, etc.).
+   - **Causa raiz:** Omissão de recontagem formal das anotações `@Test` após as baterias defensivas de H3.
+   - **Correção:** Ajustada a contagem em `docs/infra-u2/tdd.md` e `docs/infra-u2/progresso.md` para **19 testes em `JdbcEstoqueStorageIT`**, **17 testes em `EstoqueControllerIT`** e **3 testes em `BolsaPersistidaIT`**, totalizando com exatidão **39 métodos de teste de integração/aceitação**.
+
+2. **Injeção Segura de Segredos via `env:` no Gate 6 do CI (`.github/workflows/ci.yml`):**
+   - **Cenário:** Execução dos comandos bash de deploy e health check no Render.
+   - **Falha detectada:** Interpolação textual inline de segredos (`${{ secrets.RENDER_DEPLOY_HOOK_URL }}` e `${{ secrets.RENDER_APP_URL }}`) diretamente dentro do bloco `run:`, violando os padrões formais de segurança do GitHub Actions contra injeção de scripts e suscetível a erros de escape caso o segredo contenha aspas ou múltiplos parâmetros `&`.
+   - **Correção:** Mapeamento explícito das credenciais via bloco `env:`, consumindo variáveis de ambiente POSIX protegidas (`$RENDER_DEPLOY_HOOK_URL` e `$RENDER_APP_URL`).
+
+3. **Gatilhos Incompletos de Branches de Entrega no CI (`.github/workflows/ci.yml`):**
+   - **Cenário:** Push em branches de trabalho convencionais como `infra/**`, `entrega/**`, `etapa/**` ou `release/**`.
+   - **Falha detectada:** O gatilho `on.push.branches` estava limitado a `[main, develop, 'feature/**', 'fix/**']`, impedindo a execução automática da esteira em branches específicas da disciplina de entrega.
+   - **Correção:** Ampliação do padrão de branches para `[main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**']`.
+
+4. **Blindagem de Smoke Test com Detecção Imediata de Crash e Casos Negativos (HTTP 404):**
+   - **Cenário:** Falha fatal prematura de contêiner ou testes de rotas inexistentes.
+   - **Falha detectada:** Se um contêiner abortasse com status `exited` (ex: falha de JVM ou porta), o laço de espera aguardava as 45 iterações completas (90s). Além disso, o smoke test cobria apenas o caminho feliz (200 OK), sem validar status 404 e sem atestar explicitamente o componente `db` (PostgreSQL) no Actuator.
+   - **Correção:** Adição de detecção precoce de status `exited` com saída imediata e dump de logs; adição de asserções explícitas de presença do PostgreSQL no Actuator (`grep '"db"'` e `grep 'PostgreSQL'`); e expansão dos testes de fumaça para cobrir retorno HTTP 404 em `GET` e `DELETE` com identificadores inexistentes.
+
+5. **Semântica Funcional do Perfil Maven `integration` (`pom.xml`):**
+   - **Cenário:** Execução de `.\mvnw.cmd -Pintegration verify`.
+   - **Falha detectada:** O bloco `<profile><id>integration</id>` existia sem propriedades associadas, servindo apenas como esqueleto passivo.
+   - **Correção:** Adicionada a propriedade `<skipITs>false</skipITs>` dentro do perfil, tornando expressa e funcional a intenção do perfil no lifecycle do Maven.
+
+---
+
+### 7. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída e Blindada (Auditoria Adversarial Round 2 Finalizada)**.
 - **Mudanças:** 
-  - Adição do perfil Maven `integration` no `pom.xml` para ativação formal de Failsafe e Testcontainers via `.\mvnw.cmd -Pintegration verify`.
-  - Reestruturação de `.github/workflows/ci.yml` em 6 gates sequenciais/dependentes (Benchmarks Python, Testes C com sanitizers, Testes Java Unitários Surefire, Testes Java Integração/Aceitação Failsafe com Testcontainers, Docker Build sem `-DskipTests` com Smoke Test Compose, e Deploy no Render formalmente preparado mas pendente para a Etapa 7).
-  - Eliminação completa de contornos de falha (`continue-on-error` e `|| true`).
-  - Blindagem do Gate 5: timeout fail-fast estrito com coleta de logs e expansão do Smoke Test containerizado para validação de ciclo de vida CRUD completo (POST, GET {id}, GET listagem, DELETE e GET confirmação) contra PostgreSQL real.
-  - Correção cross-platform de `aed-c/Makefile` para execução limpa de testes C tanto no Linux (CI) quanto no Windows via MinGW (`mingw32-make test` e `clean`).
-  - Criação do documento `docs/infra-u2/tdd.md` com a metodologia Red → Green, diferenciação pedagógica U1 vs U2, matriz de rastreabilidade de commits e roteiro de demonstração do Compose.
-  - Atualização de `docs/infra-u2/progresso.md` marcando a Etapa 6 como Concluída e auditada.
+  - `pom.xml`: Adição da propriedade explícita `<skipITs>false</skipITs>` no perfil Maven `integration`.
+  - `.github/workflows/ci.yml`: Proteção de segredos no Gate 6 via mapeamento seguro `env:`, ampliação de branches (`infra/**`, `entrega/**`, `etapa/**`, `release/**`), detecção fail-fast de crash (`exited`), validação de saúde de banco PostgreSQL no Actuator e asserções negativas (HTTP 404 em GET e DELETE) no Smoke Test containerizado.
+  - `aed-c/Makefile`: Blindagem cross-platform validada no Windows MinGW e Linux.
+  - `docs/infra-u2/tdd.md`: Correção factual dos totais de testes de integração (19 em `JdbcEstoqueStorageIT`, 39 no total).
+  - `docs/infra-u2/progresso.md`: Registro da Auditoria Adversarial Round 2 e atualização dos números auditados.
 - **Verificação:** 
-  - **183/183 testes Java unitários e de caracterização aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~19s).
-  - **Comprovação de falha ruidosa (`BUILD FAILURE`, código 1)** no `.\mvnw.cmd verify` quando o Docker Desktop não está em execução, garantindo que testes de integração não são silenciados.
-  - **Comprovação de segregação limpa (`BUILD SUCCESS`)** via `.\mvnw.cmd -DskipITs verify`, executando todos os 183 testes unitários e pulando Failsafe conforme o padrão Maven.
-  - Validação da ativação do perfil `integration` via `.\mvnw.cmd -Pintegration help:active-profiles`.
-  - **54/54 testes em C aprovados** localmente com zero vazamentos (23 em `test_lista` e 31 em `test_fila`), executados diretamente e via `mingw32-make test`.
-  - **7/7 testes de benchmarks em Python aprovados** e checagem `--check` de 8 configurações bem-sucedida.
-  - Validação da sintaxe do Compose via `docker compose config --quiet` (saída 0).
+  - `.\mvnw.cmd test`: **183/183 testes Java unitários e de caracterização aprovados** (0 falhas, 0 erros, tempo ~19.5s).
+  - `.\mvnw.cmd verify`: **BUILD FAILURE ruidoso comprovado** na ausência do Docker Desktop (`IllegalStateException: Could not find a valid Docker environment`), provando que os 39 métodos Failsafe não mascaram ausência de banco.
+  - `.\mvnw.cmd -DskipITs verify`: **BUILD SUCCESS comprovado** (~20.6s) com 183 testes unitários aprovados e ITs pulados de forma limpa.
+  - `.\mvnw.cmd help:evaluate -Dexpression=skipITs`: Avaliado como `false` por padrão e `true` com `-DskipITs`.
+  - `mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test`: **54/54 asserções em C aprovadas** (23 lista, 31 fila).
+  - `mingw32-make -C aed-c clean`: Binários limpos sem erros (`Test-Path` retornou `False`).
+  - `python -m unittest discover -s bench -p 'test_*.py'`: **7/7 testes de benchmark aprovados**.
+  - `python bench/plot_speedup.py --check`: **8 configurações e 40 medições canônicas íntegras**.
+  - `docker compose config --quiet`: **Sintaxe validada com código 0**.
 - **Pendências:** 
   - A Etapa 7 (Branches, GitHub Flow, proteção de branch `main` e deploy final no Render) permanece expressamente **Pendente**.
-- **Próxima etapa:** **Etapa 7 — E3: Branches, GitHub Flow e Deploy Automatizado** (criação de branch de entrega, abertura de Pull Request para `main`, configuração/verificação das regras de proteção de branch e publicação no Render com banco gerenciado).
+- **Próxima etapa:** **Etapa 7 — E3: Branches, GitHub Flow e Deploy Automatizado** (criação de branch temática de entrega, abertura de Pull Request para `main`, configuração/verificação das regras de proteção de branch e publicação no Render com banco gerenciado).
 
 
 
