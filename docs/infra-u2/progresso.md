@@ -13,7 +13,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 2** | E1: Base de Containers (Dockerfile, Compose, PostgreSQL) | **Concluída** | 17/10/2026 |
 | **Etapa 3** | E2: H1 — Cadastro e Recuperação Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 4** | E2: H2 — Listagem e Consulta Persistente (TDD) | **Concluída** | 17/10/2026 |
-| **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | Pendente | — |
+| **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 6** | E2: Integração e Gates na Esteira | Pendente | — |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | Pendente | — |
 | **Etapa 8** | Documentação e Apresentação | Pendente | — |
@@ -831,5 +831,118 @@ Uma terceira rodada adversarial profunda e exaustiva (R3) auditou a totalidade d
   - 7/7 testes de benchmarks em Python aprovados e verificação `--check` consistente.
 - **Pendências:** 
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
-  - A remoção persistente (H3) permanece expressamente pendente para a Etapa 5.
-- **Próxima etapa:** **Etapa 5 — E2: H3 — Remoção Persistente (TDD)** (remoção LIFO da ocorrência mais recente de bolsas no PostgreSQL com integridade de duplicatas e deleção persistente pós-reinício).
+- **Próxima etapa:** **Etapa 6 — E2: Integração e Gates na Esteira** (consolidação da suíte de testes nos 3 níveis e validação do pipeline CI/CD).
+
+---
+
+## Etapa 5: E2: H3 — Remoção Persistente (TDD)
+
+- **Estado:** Concluída
+- **Data de Execução:** 17/10/2026
+- **História Implementada:** **H3 — Remoção Persistente de Bolsas**
+- **Regra de Integridade:** Não-regressão estrita dos 151 testes anteriores (U1, H1 e H2), totalizando agora **165 testes automatizados** com 100% de aprovação no Surefire. Nenhuma alteração nas estruturas pedagógicas de AED da U1 (`ListaEstoque`, `NoBolsa`, `FilaRequisicoes`), nem nos testes C (54/54) e benchmarks Python (7/7).
+
+---
+
+### 1. Contexto e Objetivos da Etapa 5
+
+A Etapa 5 conclui a tríade de persistência da Release 1 (H1: cadastro, H2: listagem/consulta, H3: remoção persistente) no módulo de estoque de bolsas de sangue do projeto **Rota Vital**, seguindo rigorosamente o ciclo Red → Green → Refactor:
+
+1. **T3.1 — Storage em Memória (`ListaEstoqueStorage`):**
+   - Garantir a operação `boolean removerPorId(String id)` na interface `EstoqueStorage` e no adaptador `ListaEstoqueStorage` (`@Profile({"u1", "default"})`).
+   - Delegar para a estrutura encadeada manual em memória `listaEstoque.remover(id.trim())`, garantindo remoção LIFO (a partir da cabeça), decremento determinístico de tamanho e retorno booleano (`true` se removeu, `false` se não encontrou ou estoque vazio).
+   - Testar exaustivamente a remoção sob IDs duplicados, casos de borda e entradas inválidas (nulo, em branco, $> 50$ caracteres).
+
+2. **T3.2 — Storage Persistente (`JdbcEstoqueStorage`):**
+   - Implementar `removerPorId(String id)` no adaptador JDBC sob perfil `infra` (`@Profile("infra")`).
+   - Executar comando SQL `DELETE` atômico direcionado pela chave serial `id_seq`, excluindo exclusivamente a ocorrência de maior `id_seq` para aquele ID:
+     ```sql
+     DELETE FROM bolsas
+     WHERE id_seq = (
+         SELECT id_seq FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1
+     );
+     ```
+   - Tratar atomicidade sob anotação `@Transactional`.
+   - Avaliar `linhasAfetadas > 0`: se 1 linha afetada, retorna `true`; se 0 linhas (registro inexistente ou estoque vazio), retorna `false`.
+   - Garantir que em caso de duplicatas, apenas a ocorrência mais recente é excluída, mantendo intactas as ocorrências anteriores do mesmo ID.
+   - Propagar `DataAccessException` sem qualquer fallback silencioso para memória.
+   - Preservar integridade de encoding UTF-8, símbolos alfanuméricos e proteção nativa contra SQL Injection via bind parameters (`?`).
+
+3. **T3.3 — Integração com Aplicação (`EstoqueService` e `EstoqueController`):**
+   - Expor `remover(id)` e alias pedagógico `removerBolsa(id)` em `EstoqueService`.
+   - Integrar ao endpoint REST `DELETE /api/estoque/{id}` em `EstoqueController`:
+     - Retornar HTTP 200 OK com payload `{"mensagem": "Bolsa removida", "tamanho": N}` quando bem-sucedido.
+     - Retornar HTTP 404 Not Found quando o retorno for `false` (bolsa inexistente, id vazio ou já esgotado).
+     - Tratar sanitização via `id.trim()` e fail-fast para IDs inválidos.
+
+4. **T3.4 — Validação em Três Níveis e Persistência Pós-Reinício:**
+   - **Nível 1 (Unitário):** Testes isolados com mocks e adaptadores em memória.
+   - **Nível 2 (Integração):** Testes contra PostgreSQL Real demonstrando exclusão atômica, sobrevivência de duplicatas anteriores e persistência durável da exclusão após múltiplos ciclos de reinício do contexto Spring (`BolsaPersistidaIT.deveManterRemocaoAposReinicioContexto`).
+   - **Nível 3 (Aceitação):** Testes de ponta a ponta da API HTTP com MockMvc sob o perfil `infra` (`EstoqueControllerIT`), validando status 200, status 404 e consulta imediata da duplicata sobrevivente (`GET /api/estoque/{id}`).
+
+---
+
+### 2. Histórico Rastreável do Ciclo TDD (Red → Green → Refactor)
+
+A implementação foi realizada em incrementos granulares com commits semânticos no Git:
+
+| Passo / Tarefa | Tipo | Commit | Descrição da Mudança | Comportamento no Ciclo TDD |
+|---|---|---|---|---|
+| **T3.1** | `test` | `0bb4240` | `test(h3): adiciona testes unitarios para removerPorId em ListaEstoqueStorage (T3.1)` | Adição de testes de remoção com duplicatas LIFO e casos de borda em `ListaEstoqueStorageTest` (14 testes). | **Green direto** (lógica da lista encadeada manual de AED já suportava remoção da cabeça). |
+| **T3.2** | `test` | `2b07ecc` | `test(h3): adiciona testes unitarios para removerPorId em JdbcEstoqueStorage (T3.2)` | Substituição do teste de segregação por testes unitários da subquery SQL, contagem de linhas afetadas, fail-fast e UTF-8 em `JdbcEstoqueStorageTest`. | **Red comprovado:** `UnsupportedOperationException: Pendente para Etapa 5 (H3)` em 5 testes. |
+| **T3.2** | `feat` | `9a4b69b` | `feat(h3): implementa removerPorId em JdbcEstoqueStorage com delecao atomica via subquery (T3.2)` | Implementação do método `removerPorId` em `JdbcEstoqueStorage` com `DELETE FROM bolsas WHERE id_seq = (SELECT id_seq ... LIMIT 1)` e `@Transactional`. | **Green comprovado:** 23/23 testes de `JdbcEstoqueStorageTest` aprovados. |
+| **T3.3** | `test` | `49d266f` | `test(h3): adiciona testes para EstoqueService.removerBolsa() e EstoqueController.remover() (T3.3)` | Testes unitários para delegação de `removerBolsa`, propagação de `DataAccessException` e normalização com `trim()`. | **Red comprovado:** Erro de compilação por ausência do método `removerBolsa` em `EstoqueService`. |
+| **T3.3** | `feat` | `26b19d9` | `feat(h3): adiciona removerBolsa em EstoqueService e valida integracao com EstoqueController (T3.3)` | Adição de `removerBolsa(id)` em `EstoqueService` delegando para `remover(id)` e validação da integração com `EstoqueController`. | **Green comprovado:** 14/14 testes em `EstoqueServiceTest` e 16/16 testes em `EstoqueControllerTest` aprovados. |
+| **T3.4** | `test` | `9ac7c3b` | `test(h3): implementa testes de integracao, aceitacao e caracterizacao em 3 niveis para H3` | Criação dos testes de integração em `JdbcEstoqueStorageIT`, persistência pós-reinício em `BolsaPersistidaIT`, aceitação em `EstoqueControllerIT` e caracterização simétrica em `EstoqueControllerCaracterizacaoTest` e `EstoqueServiceCaracterizacaoTest`. | **Green comprovado:** 164/164 testes unitários e de caracterização aprovados no Surefire e 19/19 classes compiladas no test-compile. |
+| **T3.2** | `test` | `b8cab3c` | `test(h3): adiciona teste unitario para preservacao de UTF-8 em removerPorId` | Teste unitário defensivo comprovando que IDs contendo acentuação e caracteres especiais UTF-8 são preservados na execução do `DELETE`. | **Green comprovado:** 24/24 testes em `JdbcEstoqueStorageTest` aprovados. Total de **165 testes Java**. |
+
+---
+
+### 3. Matriz de Cobertura de Testes nos Três Níveis (H3)
+
+| Nível | Arquivo / Classe | Testes Implementados | Escopo / Requisito Validado |
+|---|---|---|---|
+| **Nível 1 (Unitário)** | `ListaEstoqueStorageTest` | 14 testes | Remoção na lista encadeada em memória, LIFO sob duplicatas, decremento de tamanho, estoque vazio, validação de IDs nulos/em branco/$>50$. |
+| **Nível 1 (Unitário)** | `JdbcEstoqueStorageTest` | 24 testes | Subquery SQL serial com `ORDER BY id_seq DESC LIMIT 1`, `rowsAffected > 0`, normalização com trim, propagação de `DataAccessException`, resiliência a SQL injection e UTF-8. |
+| **Nível 1 (Unitário)** | `EstoqueServiceTest` | 14 testes | Delegação de `remover` e `removerBolsa` para `storage.removerPorId`, fail-fast e propagação de exceções sem fallback. |
+| **Nível 1 (Unitário)** | `EstoqueControllerTest` | 16 testes | Endpoint `DELETE /api/estoque/{id}`, status HTTP 200 com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, status 404 para ID inexistente/em branco, propagação de falhas de banco. |
+| **Nível 1 (Caracterização)** | `EstoqueServiceCaracterizacaoTest` | 11 testes | Paridade funcional de `remover` e `removerBolsa` sob perfil `u1`, remoção da ocorrência mais recente sob duplicatas. |
+| **Nível 1 (Caracterização)** | `EstoqueControllerCaracterizacaoTest` | 19 testes | Paridade REST sob perfil `u1`, remoção via HTTP com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, remoção pontual de duplicata e consulta subsequente da anterior. |
+| **Nível 2 (Integração)** | `JdbcEstoqueStorageIT` | 14 testes | Execução contra PostgreSQL Real: deleção física na tabela `bolsas`, remoção exclusiva da ocorrência mais recente sob duplicatas, retorno de `false` para ausentes, resiliência a SQL injection. |
+| **Nível 2 (Integração)** | `BolsaPersistidaIT` | 3 testes | Comprovação durável de exclusão pós-reinício (`deveManterRemocaoAposReinicioContexto`): encerra contexto Spring, abre novo contexto e atesta que a ocorrência deletada não reaparece, que duplicatas anteriores permanecem intactas e que a remoção total persiste em novos contextos. |
+| **Nível 3 (Aceitação)** | `EstoqueControllerIT` | 15 testes | API REST sob perfil `infra` com PostgreSQL Real: `DELETE /api/estoque/{id}` retornando 200 com envelope, 404 para inexistente, sobrevivência da duplicata anterior e validação de limite ($\le 50$). |
+
+---
+
+### 4. Validação de Não-Regressão Geral
+
+- **Testes em C (AED U1):** **54/54 asserções aprovadas** via GCC MinGW local:
+  - `test_lista.exe`: 23/23 testes aprovados (vazio, inserção, consulta, remoção).
+  - `test_fila.exe`: 31/31 testes aprovados (vazio, enfileiramento, desenfileiramento, reuso, espiar).
+  - Zero vazamento de memória e zero alteração de arquivos de código ou teste em C.
+- **Benchmarks Python (SO U1):** **7/7 testes aprovados** (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** **165 testes aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, 0 pulados, tempo ~17.7s).
+- **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`.\mvnw.cmd test-compile`).
+
+---
+
+### 5. Resumo Padronizado de Fechamento da Etapa 5 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 5 (E2: H3 — Remoção Persistente) — **Concluída**.
+- **Mudanças:** 
+  - Implementação do método `removerPorId(String id)` em `JdbcEstoqueStorage` sob perfil `infra` com anotação `@Transactional`, executando comando SQL `DELETE FROM bolsas WHERE id_seq = (SELECT id_seq FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1)`, retornando `true` quando `rowsAffected > 0` e `false` quando ausente ou vazio.
+  - Garantia de que a deleção remove exclusivamente a ocorrência de maior `id_seq` (mais recente / LIFO), preservando intactas quaisquer ocorrências anteriores cadastradas sob o mesmo identificador de negócio.
+  - Implementação de guardas defensivas fail-fast em `removerPorId` para IDs nulos, em branco ou com mais de 50 caracteres (`VARCHAR(50)`), e propagação direta de `DataAccessException` sem fallback silencioso para memória.
+  - Adição de `removerBolsa(String id)` como alias de negócio em `EstoqueService` delegando para `remover(id)`.
+  - Integração do endpoint `DELETE /api/estoque/{id}` em `EstoqueController`, retornando status HTTP 200 com envelope JSON `{"mensagem": "Bolsa removida", "tamanho": N}` para sucesso e HTTP 404 Not Found para bolsa inexistente ou esgotada.
+  - Bateria completa de testes em 3 níveis (unitário, integração e aceitação), incluindo teste de persistência durável da exclusão após encerramento e recriação do contexto Spring (`BolsaPersistidaIT.deveManterRemocaoAposReinicioContexto`).
+- **Verificação:** 
+  - 165/165 testes Java aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~17.7s).
+  - 19/19 classes de testes compiladas sem falhas via `.\mvnw.cmd test-compile`.
+  - Sequência rastreável Red → Green comprovada no Git através dos commits semânticos (`test:` e `feat:`).
+  - 54/54 testes em C aprovados (23 na lista e 31 na fila da U1).
+  - 7/7 testes de benchmarks em Python aprovados e verificação `--check` de 8 configurações consistente.
+- **Pendências:** 
+  - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
+- **Próxima etapa:** **Etapa 6 — E2: Integração e Gates na Esteira** (consolidação da esteira de CI com execução automatizada de testes nos 3 níveis, gates de qualidade e relatório de cobertura).
+
