@@ -171,4 +171,13 @@ class EstoqueServiceCaracterizacaoTest {
         assertEquals(0, service.tamanho());
         assertFalse(service.removerBolsa("BOLSA-DUP-RB"));
     }
+
+    @Test
+    @DisplayName("H3 / Caracterização: Deve retornar false ao remover id excedendo 50 caracteres")
+    void deveRetornarFalseAoRemoverIdExcedendo50Caracteres() {
+        String idGigante = "A".repeat(51);
+        assertFalse(service.remover(idGigante));
+        assertFalse(service.removerBolsa(idGigante));
+    }
 }
+

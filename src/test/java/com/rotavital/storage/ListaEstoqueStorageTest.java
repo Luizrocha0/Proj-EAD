@@ -204,4 +204,17 @@ class ListaEstoqueStorageTest {
         assertTrue(storage.removerPorId("   BOLSA-TRIM   "));
         assertEquals(0, storage.tamanho());
     }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve preservar encoding UTF-8 e símbolos alfanuméricos ao remover em memória")
+    void devePreservarEncodingUtf8ESimbolosAoRemoverEmMemoria() {
+        String idUtf8 = "BOLSA_UTF8-01/2026-João";
+        storage.salvar(criarBolsa(idUtf8, "O+", 450.0, "Doador Especial"));
+        assertEquals(1, storage.tamanho());
+
+        assertTrue(storage.removerPorId(idUtf8));
+        assertEquals(0, storage.tamanho());
+        assertTrue(storage.buscarPorId(idUtf8).isEmpty());
+    }
 }
+

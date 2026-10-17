@@ -532,4 +532,12 @@ class EstoqueControllerCaracterizacaoTest {
         mockMvc.perform(delete("/api/estoque/BOLSA-DUP-DEL-U1"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("H3 / Caracterização: DELETE /api/estoque/{id} com ID excedendo 50 caracteres sob perfil u1 deve retornar 404")
+    void deveRetornar404AoRemoverComIdExcedendo50CaracteresSobPerfilU1() throws Exception {
+        mockMvc.perform(delete("/api/estoque/" + "B".repeat(51)))
+                .andExpect(status().isNotFound());
+    }
 }
+
