@@ -90,5 +90,100 @@ class BolsaRequestDTOTest {
     void deveRejeitarCamposObrigatoriosNulos() {
         BolsaRequestDTO dtoInvalido = new BolsaRequestDTO(null, "O+", 450.0, "2026-09-01", "2026-11-01", "Doador");
         assertThrows(NullPointerException.class, dtoInvalido::toDomain);
+
+        BolsaRequestDTO dtoSemTipo = new BolsaRequestDTO("B-1", null, 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(NullPointerException.class, dtoSemTipo::toDomain);
+
+        BolsaRequestDTO dtoSemData = new BolsaRequestDTO("B-1", "O+", 450.0, null, "2026-11-01", "Doador");
+        assertThrows(NullPointerException.class, dtoSemData::toDomain);
+
+        BolsaRequestDTO dtoSemValidade = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", null, "Doador");
+        assertThrows(NullPointerException.class, dtoSemValidade::toDomain);
+
+        BolsaRequestDTO dtoSemDoador = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", "2026-11-01", null);
+        assertThrows(NullPointerException.class, dtoSemDoador::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve normalizar tipos sanguíneos com espaços ou letras minúsculas")
+    void deveNormalizarTipoSanguineoComEspacosEMinusculas() {
+        BolsaRequestDTO dto1 = new BolsaRequestDTO("B-1", "  o+  ", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals("O+", dto1.toDomain().getTipoSanguineo());
+
+        BolsaRequestDTO dto2 = new BolsaRequestDTO("B-2", "a-", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals("A-", dto2.toDomain().getTipoSanguineo());
+
+        BolsaRequestDTO dto3 = new BolsaRequestDTO("B-3", " ab+ ", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals("AB+", dto3.toDomain().getTipoSanguineo());
+
+        BolsaRequestDTO dto4 = new BolsaRequestDTO("B-4", "O +", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertEquals("O+", dto4.toDomain().getTipoSanguineo());
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar id vazio ou em branco")
+    void deveRejeitarIdVazioOuEmBranco() {
+        BolsaRequestDTO dtoVazio = new BolsaRequestDTO("", "O+", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoVazio::toDomain);
+
+        BolsaRequestDTO dtoBranco = new BolsaRequestDTO("   ", "O+", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoBranco::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar tipo sanguíneo vazio ou em branco")
+    void deveRejeitarTipoSanguineoVazioOuEmBranco() {
+        BolsaRequestDTO dtoVazio = new BolsaRequestDTO("B-1", "", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoVazio::toDomain);
+
+        BolsaRequestDTO dtoBranco = new BolsaRequestDTO("B-1", "   ", 450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoBranco::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar doador vazio ou em branco")
+    void deveRejeitarDoadorVazioOuEmBranco() {
+        BolsaRequestDTO dtoVazio = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", "2026-11-01", "");
+        assertThrows(IllegalArgumentException.class, dtoVazio::toDomain);
+
+        BolsaRequestDTO dtoBranco = new BolsaRequestDTO("B-1", "O+", 450.0, "2026-09-01", "2026-11-01", "   ");
+        assertThrows(IllegalArgumentException.class, dtoBranco::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar volumeMl negativo ou zero")
+    void deveRejeitarVolumeMlNegativoOuZero() {
+        BolsaRequestDTO dtoZero = new BolsaRequestDTO("B-1", "O+", 0.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoZero::toDomain);
+
+        BolsaRequestDTO dtoNegativo = new BolsaRequestDTO("B-1", "O+", -450.0, "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoNegativo::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar volumeMl em string não-numérica")
+    void deveRejeitarVolumeMlNaoNumerico() {
+        BolsaRequestDTO dtoInvalido = new BolsaRequestDTO("B-1", "O+", "abc", "2026-09-01", "2026-11-01", "Doador");
+        assertThrows(IllegalArgumentException.class, dtoInvalido::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar validade anterior à data de coleta")
+    void deveRejeitarValidadeAnteriorADataColeta() {
+        BolsaRequestDTO dtoInconsistente = new BolsaRequestDTO(
+                "B-1", "O+", 450.0, "2026-10-01", "2026-09-01", "Doador"
+        );
+        assertThrows(IllegalArgumentException.class, dtoInconsistente::toDomain);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve realizar parsing tolerante a espaços periféricos em datas")
+    void deveTratarDatasComEspacosPerifericos() {
+        BolsaRequestDTO dto = new BolsaRequestDTO(
+                "B-1", "O+", 450.0, " 2026-09-01 ", " 2026-11-01 ", "Doador"
+        );
+        Bolsa bolsa = dto.toDomain();
+        assertEquals(LocalDate.of(2026, 9, 1), bolsa.getDataColeta());
+        assertEquals(LocalDate.of(2026, 11, 1), bolsa.getValidade());
     }
 }

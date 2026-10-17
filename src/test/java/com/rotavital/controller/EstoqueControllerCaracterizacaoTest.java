@@ -135,4 +135,108 @@ class EstoqueControllerCaracterizacaoTest {
                 .andExpect(jsonPath("$.tamanho", is(0)))
                 .andExpect(jsonPath("$.bolsas", hasSize(0)));
     }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 ao receber id ou doador vazio")
+    void deveRetornar400AoAdicionarBolsaComCamposVazios() throws Exception {
+        String jsonIdVazio = """
+            {
+                "id": "   ",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonIdVazio))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
+    }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 ao receber datas inválidas ou inconsistentes")
+    void deveRetornar400AoAdicionarBolsaComDatasInvalidas() throws Exception {
+        String jsonInvalido = """
+            {
+                "id": "BOLSA-INV",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-99-99",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonInvalido))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
+
+        String jsonValidadeAnterior = """
+            {
+                "id": "BOLSA-INV-2",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-10-01",
+                "validade": "2026-09-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonValidadeAnterior))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
+    }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 para volume negativo ou zero")
+    void deveRetornar400AoAdicionarBolsaComVolumeInvalido() throws Exception {
+        String jsonVolumeNegativo = """
+            {
+                "id": "BOLSA-VOL",
+                "tipoSanguineo": "O+",
+                "volumeMl": -10.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonVolumeNegativo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("Dados inválidos")));
+    }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve aceitar tipo sanguíneo com espaços/minúsculas e normalizar para canonical")
+    void deveAceitarTipoSanguineoComEspacosEMinusculoENormalizar() throws Exception {
+        String jsonNormalizar = """
+            {
+                "id": "BOLSA-NORM",
+                "tipoSanguineo": "  ab+  ",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonNormalizar))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque/BOLSA-NORM"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipoSanguineo", is("AB+")));
+    }
 }

@@ -109,4 +109,25 @@ class JdbcEstoqueStorageTest {
 
         assertThrows(DataAccessException.class, () -> storage.salvar(bolsa));
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar salvar bolsa nula com fail-fast")
+    void deveRejeitarSalvarBolsaNula() {
+        assertThrows(NullPointerException.class, () -> storage.salvar(null));
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para busca com id nulo ou em branco sem consultar JDBC")
+    void deveRetornarVazioAoConsultarIdNuloOuEmBrancoSemChamarJdbc() {
+        assertTrue(storage.buscarPorId(null).isEmpty());
+        assertTrue(storage.buscarPorId("   ").isEmpty());
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar instanciação com JdbcTemplate nulo")
+    void deveRejeitarInstanciacaoComJdbcTemplateNulo() {
+        assertThrows(NullPointerException.class, () -> new JdbcEstoqueStorage(null));
+    }
 }

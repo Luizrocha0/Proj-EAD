@@ -77,4 +77,24 @@ class ListaEstoqueStorageTest {
         assertEquals("B-2", bolsas[0].getId());
         assertEquals("B-1", bolsas[1].getId());
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve rejeitar salvar bolsa nula com fail-fast")
+    void deveRejeitarSalvarBolsaNula() {
+        assertThrows(NullPointerException.class, () -> storage.salvar(null));
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para busca com id nulo ou em branco")
+    void deveRetornarVazioAoConsultarIdNuloOuEmBranco() {
+        assertTrue(storage.buscarPorId(null).isEmpty());
+        assertTrue(storage.buscarPorId("   ").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo ou em branco")
+    void deveRetornarFalseAoRemoverIdNuloOuEmBranco() {
+        assertFalse(storage.removerPorId(null));
+        assertFalse(storage.removerPorId("   "));
+    }
 }
