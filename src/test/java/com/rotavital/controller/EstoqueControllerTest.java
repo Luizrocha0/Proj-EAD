@@ -235,4 +235,25 @@ class EstoqueControllerTest {
         assertEquals(HttpStatus.NOT_FOUND, controller.remover(null).getStatusCode());
         assertEquals(HttpStatus.NOT_FOUND, controller.remover("   ").getStatusCode());
     }
+
+    @Test
+    @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} deve fazer trim no id recebido")
+    void deveFazerTrimNoIdAoRemover() {
+        when(estoqueService.remover("BOLSA-TRIM")).thenReturn(true);
+        when(estoqueService.tamanho()).thenReturn(5);
+
+        ResponseEntity<Map<String, Object>> response = controller.remover("   BOLSA-TRIM   ");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(estoqueService).remover("BOLSA-TRIM");
+    }
+
+    @Test
+    @DisplayName("H3 / Nível 1 / Fail-Fast: DELETE deve propagar DataAccessException imediatamente sem fallback")
+    void devePropagarDataAccessExceptionAoRemoverQuandoServiceFalhar() {
+        when(estoqueService.remover("BOLSA-FAIL"))
+                .thenThrow(new DataAccessException("Falha de conexão no banco") {});
+
+        assertThrows(DataAccessException.class, () -> controller.remover("BOLSA-FAIL"));
+    }
 }

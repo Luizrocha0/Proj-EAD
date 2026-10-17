@@ -75,6 +75,36 @@ class EstoqueServiceTest {
     }
 
     @Test
+    @DisplayName("H3 / T3.3: Deve delegar removerBolsa para storage.removerPorId()")
+    void deveDelegarRemoverBolsaParaStorage() {
+        when(storage.removerPorId("BOLSA-001")).thenReturn(true);
+
+        boolean removido = service.removerBolsa("BOLSA-001");
+
+        assertTrue(removido);
+        verify(storage, times(1)).removerPorId("BOLSA-001");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.3: Deve propagar DataAccessException em remover e removerBolsa sem fallback")
+    void devePropagarExcecaoQuandoRemoverFalhar() {
+        when(storage.removerPorId("BOLSA-FAIL"))
+                .thenThrow(new DataAccessException("Falha de conexão no banco") {});
+
+        assertThrows(DataAccessException.class, () -> service.remover("BOLSA-FAIL"));
+        assertThrows(DataAccessException.class, () -> service.removerBolsa("BOLSA-FAIL"));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.3: removerBolsa deve retornar false para id nulo, em branco ou excedendo 50 caracteres sem delegar")
+    void deveRetornarFalseAoRemoverBolsaComIdInvalidoSemDelegar() {
+        assertFalse(service.removerBolsa(null));
+        assertFalse(service.removerBolsa("   "));
+        assertFalse(service.removerBolsa("A".repeat(51)));
+        verifyNoInteractions(storage);
+    }
+
+    @Test
     @DisplayName("T1.3: Deve delegar listarTodas para storage.listarTodas()")
     void deveDelegarListarTodasParaStorage() {
         Bolsa[] bolsas = new Bolsa[]{criarBolsa("B-1"), criarBolsa("B-2")};
