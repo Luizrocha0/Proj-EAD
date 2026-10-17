@@ -1,5 +1,6 @@
 package com.rotavital.storage;
 
+import com.rotavital.aed.u1.ListaEstoque;
 import com.rotavital.domain.Bolsa;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -10,28 +11,30 @@ import java.util.Optional;
 @Profile({"u1", "default"})
 public class ListaEstoqueStorage implements EstoqueStorage {
 
+    private final ListaEstoque listaEstoque = new ListaEstoque();
+
     @Override
     public void salvar(Bolsa bolsa) {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red");
+        listaEstoque.inserir(bolsa);
     }
 
     @Override
     public Optional<Bolsa> buscarPorId(String id) {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red");
+        return listaEstoque.consultar(id);
     }
 
     @Override
     public boolean removerPorId(String id) {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red");
+        return listaEstoque.remover(id);
     }
 
     @Override
     public Bolsa[] listarTodas() {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red");
+        return listaEstoque.toArray();
     }
 
     @Override
     public int tamanho() {
-        throw new UnsupportedOperationException("Stub para ciclo TDD Red");
+        return listaEstoque.getTamanho();
     }
 }
