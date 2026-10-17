@@ -31,6 +31,7 @@ public class EstoqueService {
      * Adiciona uma bolsa ao estoque delegando para o storage.
      */
     public void adicionar(Bolsa bolsa) {
+        Objects.requireNonNull(bolsa, "bolsa não pode ser nula");
         storage.salvar(bolsa);
     }
 
@@ -38,7 +39,10 @@ public class EstoqueService {
      * Consulta uma bolsa pelo ID delegando para o storage.
      */
     public Optional<Bolsa> consultar(String id) {
-        return storage.buscarPorId(id);
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        return storage.buscarPorId(id.trim());
     }
 
     /**
@@ -47,7 +51,10 @@ public class EstoqueService {
      * @return true se encontrada e removida
      */
     public boolean remover(String id) {
-        return storage.removerPorId(id);
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+        return storage.removerPorId(id.trim());
     }
 
     /**

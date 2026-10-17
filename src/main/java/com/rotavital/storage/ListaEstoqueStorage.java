@@ -15,17 +15,24 @@ public class ListaEstoqueStorage implements EstoqueStorage {
 
     @Override
     public void salvar(Bolsa bolsa) {
+        java.util.Objects.requireNonNull(bolsa, "bolsa não pode ser nula");
         listaEstoque.inserir(bolsa);
     }
 
     @Override
     public Optional<Bolsa> buscarPorId(String id) {
-        return listaEstoque.consultar(id);
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        return listaEstoque.consultar(id.trim());
     }
 
     @Override
     public boolean removerPorId(String id) {
-        return listaEstoque.remover(id);
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+        return listaEstoque.remover(id.trim());
     }
 
     @Override

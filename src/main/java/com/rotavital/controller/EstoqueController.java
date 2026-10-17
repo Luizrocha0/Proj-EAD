@@ -29,13 +29,24 @@ public class EstoqueController {
      * Body JSON: { "id", "tipoSanguineo", "volumeMl", "dataColeta", "validade", "doador" }
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> adicionar(@RequestBody BolsaRequestDTO body) {
-        Bolsa bolsa = body.toDomain();
-        estoqueService.adicionar(bolsa);
-        return ResponseEntity.ok(Map.of(
-                "mensagem", "Bolsa adicionada ao estoque",
-                "tamanho", estoqueService.tamanho()
-        ));
+    public ResponseEntity<?> adicionar(@RequestBody BolsaRequestDTO body) {
+        if (body == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensagem", "Dados inválidos: corpo da requisição não pode ser nulo"
+            ));
+        }
+        try {
+            Bolsa bolsa = body.toDomain();
+            estoqueService.adicionar(bolsa);
+            return ResponseEntity.ok(Map.of(
+                    "mensagem", "Bolsa adicionada ao estoque",
+                    "tamanho", estoqueService.tamanho()
+            ));
+        } catch (IllegalArgumentException | java.time.format.DateTimeParseException | NullPointerException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensagem", "Dados inválidos: " + e.getMessage()
+            ));
+        }
     }
 
     /**
@@ -43,7 +54,10 @@ public class EstoqueController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> consultar(@PathVariable String id) {
-        return estoqueService.consultar(id)
+        if (id == null || id.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return estoqueService.consultar(id.trim())
                 .map(bolsa -> ResponseEntity.ok((Object) Map.of(
                         "id", bolsa.getId(),
                         "tipoSanguineo", bolsa.getTipoSanguineo(),
@@ -60,7 +74,10 @@ public class EstoqueController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> remover(@PathVariable String id) {
-        boolean removido = estoqueService.remover(id);
+        if (id == null || id.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean removido = estoqueService.remover(id.trim());
         if (removido) {
             return ResponseEntity.ok(Map.of(
                     "mensagem", "Bolsa removida",

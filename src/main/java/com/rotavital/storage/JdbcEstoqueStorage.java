@@ -18,12 +18,13 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     private final JdbcTemplate jdbcTemplate;
 
     public JdbcEstoqueStorage(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = java.util.Objects.requireNonNull(jdbcTemplate, "jdbcTemplate não pode ser nulo");
     }
 
     @Override
     @Transactional
     public void salvar(Bolsa bolsa) {
+        java.util.Objects.requireNonNull(bolsa, "bolsa não pode ser nula");
         String sql = """
             INSERT INTO bolsas (id, tipo_sanguineo, volume_ml, data_coleta, validade, doador)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -41,6 +42,9 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     @Override
     @Transactional(readOnly = true)
     public Optional<Bolsa> buscarPorId(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
         String sql = """
             SELECT id, tipo_sanguineo, volume_ml, data_coleta, validade, doador
             FROM bolsas
@@ -48,7 +52,7 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
             ORDER BY id_seq DESC
             LIMIT 1
             """;
-        List<Bolsa> resultados = jdbcTemplate.query(sql, bolsaRowMapper, id);
+        List<Bolsa> resultados = jdbcTemplate.query(sql, bolsaRowMapper, id.trim());
         return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
     }
 
@@ -71,12 +75,16 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
         return total != null ? total : 0;
     }
 
-    private final RowMapper<Bolsa> bolsaRowMapper = (rs, rowNum) -> new Bolsa(
-            rs.getString("id"),
-            rs.getString("tipo_sanguineo"),
-            rs.getDouble("volume_ml"),
-            rs.getDate("data_coleta").toLocalDate(),
-            rs.getDate("validade").toLocalDate(),
-            rs.getString("doador")
-    );
+    private final RowMapper<Bolsa> bolsaRowMapper = (rs, rowNum) -> {
+        Date dataColetaSql = rs.getDate("data_coleta");
+        Date validadeSql = rs.getDate("validade");
+        return new Bolsa(
+                rs.getString("id"),
+                rs.getString("tipo_sanguineo"),
+                rs.getDouble("volume_ml"),
+                dataColetaSql != null ? dataColetaSql.toLocalDate() : null,
+                validadeSql != null ? validadeSql.toLocalDate() : null,
+                rs.getString("doador")
+        );
+    };
 }
