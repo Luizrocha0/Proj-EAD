@@ -1116,28 +1116,58 @@ Uma segunda rodada adversarial aprofundou a validação de consistência e segur
 
 ---
 
-### 7. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+### 7. Auditoria Adversarial (Round 3 — teamwork_preview_reviewer)
 
-- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída e Blindada (Auditoria Adversarial Round 2 Finalizada)**.
+Uma terceira rodada adversarial inspecionou exaustivamente todos os artefatos da Etapa 6 (`pom.xml`, `aed-c/Makefile`, `.github/workflows/ci.yml`, `docs/infra-u2/tdd.md` e `docs/infra-u2/progresso.md`) em busca de arestas, fragilidades operacionais e gaps de cobertura:
+
+1. **Exclusão Explícita de Classes Abstratas no Failsafe (`pom.xml`):**
+   - **Cenário:** Execução de suítes de integração pelo `maven-failsafe-plugin` com padrão `**/*IT.java`.
+   - **Fragilidade detectada:** A classe base abstrata `AbstractPostgresIT.java` casa com o padrão de inclusão `**/*IT.java`. Embora o JUnit Jupiter ignore classes abstratas por padrão, a ausência de uma regra formal de exclusão pode gerar advertências em ferramentas de análise estática ou runners Maven mais restritivos.
+   - **Correção:** Adicionada a cláusula `<excludes><exclude>**/Abstract*</exclude></excludes>` na configuração do `maven-failsafe-plugin`.
+
+2. **Preservação de Símbolos de Depuração nos Sanitizers C (`.github/workflows/ci.yml`):**
+   - **Cenário:** Ocorrência de violação de memória ou comportamento indefinido no Gate 2.
+   - **Fragilidade detectada:** As variáveis de ambiente `CFLAGS` declaradas inline no Gate 2 omitiam a flag `-g`, reduzindo a fidelidade dos stack traces do AddressSanitizer/UBSan em caso de pane.
+   - **Correção:** Incluída a flag `-g` em `CFLAGS` (`-Wall -Wextra -std=c11 -g -fsanitize=address,undefined`).
+
+3. **Higienização Preventiva de Line-Endings no Maven Wrapper (`.github/workflows/ci.yml`):**
+   - **Cenário:** Checkout com possíveis quebras de linha CRLF em runners Linux (Gates 3 e 4).
+   - **Fragilidade detectada:** Se o script `mvnw` contivesse quebras de linha Windows, a execução falharia com `\r: command not found`.
+   - **Correção:** Inserida a higienização defensiva `sed -i 's/\r$//' mvnw` antes da atribuição de permissão `chmod +x mvnw` em ambos os gates Java.
+
+4. **Fechamento da Matriz HTTP no Smoke Test Containerizado (Gate 5):**
+   - **Cenário:** Submissão de dados malformados ou incompletos na API durante o Smoke Test do Compose.
+   - **Fragilidade detectada:** O Smoke Test validava 200 (sucesso) e 404 (não encontrado), mas não cobria o comportamento de rejeição por dados inválidos (HTTP 400 Bad Request).
+   - **Correção:** Adicionada verificação de retorno HTTP 400 ao submeter JSON com identificador vazio (`{"id":""}`), consolidando a validação de status (200, 400, 404) e Actuator Health com PostgreSQL.
+
+5. **Normalização de URL com Barra Dupla no Gate 6 do Render:**
+   - **Cenário:** Configuração de secret `RENDER_APP_URL` com barra final (ex: `https://app.onrender.com/`).
+   - **Fragilidade detectada:** Concatenação simples gerava `https://app.onrender.com//actuator/health`, suscetível a erros de roteamento ou firewall HTTP estrito.
+   - **Correção:** Aplicada a expansão de parâmetro bash `APP_URL="${RENDER_APP_URL%/}"`, garantindo a remoção determinística de qualquer barra final residual.
+
+---
+
+### 8. Resumo Padronizado de Fechamento Definitivo da Etapa 6 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída, Blindada e Auditada (Auditoria Adversarial Round 3 - Fechamento Definitivo)**.
 - **Mudanças:** 
-  - `pom.xml`: Adição da propriedade explícita `<skipITs>false</skipITs>` no perfil Maven `integration`.
-  - `.github/workflows/ci.yml`: Proteção de segredos no Gate 6 via mapeamento seguro `env:`, ampliação de branches (`infra/**`, `entrega/**`, `etapa/**`, `release/**`), detecção fail-fast de crash (`exited`), validação de saúde de banco PostgreSQL no Actuator e asserções negativas (HTTP 404 em GET e DELETE) no Smoke Test containerizado.
-  - `aed-c/Makefile`: Blindagem cross-platform validada no Windows MinGW e Linux.
-  - `docs/infra-u2/tdd.md`: Correção factual dos totais de testes de integração (19 em `JdbcEstoqueStorageIT`, 39 no total).
-  - `docs/infra-u2/progresso.md`: Registro da Auditoria Adversarial Round 2 e atualização dos números auditados.
+  - `pom.xml`: Adição da exclusão explícita `<exclude>**/Abstract*</exclude>` no `maven-failsafe-plugin` e semântica expressa `<skipITs>false</skipITs>` no perfil `integration`.
+  - `.github/workflows/ci.yml`: Inclusão da flag `-g` no Gate 2, higienização `sed -i 's/\r$//' mvnw` nos Gates 3 e 4, validação de HTTP 400 no Smoke Test (Gate 5) e normalização de URL `APP_URL="${RENDER_APP_URL%/}"` no Gate 6.
+  - `docs/infra-u2/progresso.md`: Registro da Auditoria Adversarial Round 3 e atualização dos resumos.
 - **Verificação:** 
-  - `.\mvnw.cmd test`: **183/183 testes Java unitários e de caracterização aprovados** (0 falhas, 0 erros, tempo ~19.5s).
-  - `.\mvnw.cmd verify`: **BUILD FAILURE ruidoso comprovado** na ausência do Docker Desktop (`IllegalStateException: Could not find a valid Docker environment`), provando que os 39 métodos Failsafe não mascaram ausência de banco.
-  - `.\mvnw.cmd -DskipITs verify`: **BUILD SUCCESS comprovado** (~20.6s) com 183 testes unitários aprovados e ITs pulados de forma limpa.
+  - `.\mvnw.cmd test`: **183/183 testes Java unitários e de caracterização aprovados** (0 falhas, 0 erros, tempo ~19.2s).
+  - `.\mvnw.cmd verify`: **BUILD FAILURE ruidoso comprovado** na ausência do Docker Desktop (`IllegalStateException: Could not find a valid Docker environment`), comprovando que o Failsafe descobre os 39 métodos e não mascara falhas de banco.
+  - `.\mvnw.cmd -DskipITs verify`: **BUILD SUCCESS comprovado** (~21.3s) com 183 testes unitários aprovados e ITs pulados de forma limpa.
   - `.\mvnw.cmd help:evaluate -Dexpression=skipITs`: Avaliado como `false` por padrão e `true` com `-DskipITs`.
   - `mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test`: **54/54 asserções em C aprovadas** (23 lista, 31 fila).
-  - `mingw32-make -C aed-c clean`: Binários limpos sem erros (`Test-Path` retornou `False`).
+  - `mingw32-make -C aed-c clean`: Binários limpos sem erros.
   - `python -m unittest discover -s bench -p 'test_*.py'`: **7/7 testes de benchmark aprovados**.
   - `python bench/plot_speedup.py --check`: **8 configurações e 40 medições canônicas íntegras**.
   - `docker compose config --quiet`: **Sintaxe validada com código 0**.
 - **Pendências:** 
   - A Etapa 7 (Branches, GitHub Flow, proteção de branch `main` e deploy final no Render) permanece expressamente **Pendente**.
 - **Próxima etapa:** **Etapa 7 — E3: Branches, GitHub Flow e Deploy Automatizado** (criação de branch temática de entrega, abertura de Pull Request para `main`, configuração/verificação das regras de proteção de branch e publicação no Render com banco gerenciado).
+
 
 
 
