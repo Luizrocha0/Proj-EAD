@@ -481,5 +481,32 @@ class EstoqueControllerIT extends AbstractPostgresIT {
         mockMvc.perform(get("/api/estoque/BOLSA_UTF8-DEL"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("H3 / Aceitação: DELETE /api/estoque/{id} com ID de exatamente 50 caracteres sob perfil infra deve remover com sucesso")
+    void deveRemoverBolsaComExatamente50CaracteresViaDeleteSobPerfilInfra() throws Exception {
+        String id50 = "B".repeat(50);
+        String jsonPayload = """
+            {
+                "id": "%s",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador 50 Caracteres Infra"
+            }
+            """.formatted(id50);
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonPayload))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/estoque/" + id50))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensagem", is("Bolsa removida")))
+                .andExpect(jsonPath("$.tamanho", is(0)));
+
+        mockMvc.perform(get("/api/estoque/" + id50))
+                .andExpect(status().isNotFound());
+    }
 }
 

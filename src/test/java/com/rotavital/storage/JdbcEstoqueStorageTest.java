@@ -379,4 +379,16 @@ class JdbcEstoqueStorageTest {
             assertTrue(sql.contains("LIMIT 1"), "A query deve conter LIMIT 1");
         }
     }
+
+    @Test
+    @DisplayName("H3 / T3.2 / Defensivo: Deve executar DELETE para ID com exatamente 50 caracteres e sanitizar espaços")
+    void deveExecutarDeleteParaIdComExatamente50CaracteresEComEspacos() {
+        String id50 = "B".repeat(50);
+        when(jdbcTemplate.update(anyString(), eq(id50))).thenReturn(1);
+
+        assertTrue(storage.removerPorId(id50));
+        assertTrue(storage.removerPorId("   " + id50 + "   "));
+
+        verify(jdbcTemplate, times(2)).update(anyString(), eq(id50));
+    }
 }

@@ -182,4 +182,16 @@ class EstoqueServiceTest {
         assertThrows(DataAccessException.class, () -> service.listarEstoque());
         verify(storage, times(1)).listar();
     }
+
+    @Test
+    @DisplayName("H3 / T3.3 / Defensivo: Deve delegar remoção de ID com exatamente 50 caracteres para o storage")
+    void deveRemoverBolsaComExatamente50CaracteresDelegandoAoStorage() {
+        String id50 = "B".repeat(50);
+        when(storage.removerPorId(id50)).thenReturn(true);
+
+        assertTrue(service.remover(id50));
+        assertTrue(service.removerBolsa(id50));
+
+        verify(storage, times(2)).removerPorId(id50);
+    }
 }
