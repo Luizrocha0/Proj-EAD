@@ -775,30 +775,56 @@ Uma segunda rodada adversarial cética e independente (R2) foi executada, realiz
 
 ---
 
-### 6. Validação de Não-Regressão Geral
+### 6. Auditoria Adversarial e Blindagem R3 da Etapa 4 (Revisão Adversarial R3)
+
+Uma terceira rodada adversarial profunda e exaustiva (R3) auditou a totalidade dos contratos de H2 frente ao Story Map da Release 1, descobrindo 5 novas vulnerabilidades e lacunas de teste:
+
+1. **Lacuna no Teste de Aceitação das 5 Fixtures Canônicas em `EstoqueControllerIT` (CA2.2 / T2.4):**
+   - **Diagnóstico:** O Story Map (`docs/infra-u2/story-map.md`, linha 238) estipula expressamente o teste de aceitação `EstoqueControllerIT.deveListarTodasBolsasComEnvelope()` comprovando que o cadastro das 5 fixtures oficiais (`BOLSA-001` a `BOLSA-005`) retorna o envelope `{"bolsas": [...], "tamanho": 5}` em ordem temporal LIFO estritamente invertida (`BOLSA-005` a `BOLSA-001`). O teste existente cobria apenas 2 bolsas sintéticas.
+   - **Correção:** Implementou-se `deveListarTodasBolsasComEnvelope()` em `EstoqueControllerIT`, testando as 5 fixtures canônicas sob o perfil `infra` contra o PostgreSQL real.
+
+2. **Paridade Simétrica das 5 Fixtures em `EstoqueControllerCaracterizacaoTest` (Perfil `u1`):**
+   - **Diagnóstico:** A caracterização da API REST sob perfil `u1` também carecia do teste correspondente com as 5 fixtures canônicas.
+   - **Correção:** Implementou-se `deveListarTodasAsCincoBolsasCanonicasEmOrdemLIFOSobPerfilU1()`.
+
+3. **Vulnerabilidade a Volumes de Ponto Flutuante Não-Finitos (`NaN` e `Infinity`) no DTO:**
+   - **Diagnóstico:** Em `BolsaRequestDTO.toDomain()`, a verificação de volume executava apenas `if (volume <= 0.0)`. Em Java, comparações relacionais com `Double.NaN` retornam `false` (`NaN <= 0.0` é `false` e `NaN > 0.0` é `false`). Como consequência, entradas como `"volumeMl": "NaN"` ou `Double.NaN` escapavam da validação e geravam entidades `Bolsa` corrompidas com valor não-numérico.
+   - **Correção:** Atualizou-se a guarda para `if (volume <= 0.0 || !Double.isFinite(volume))` e adicionaram-se testes unitários e de integração HTTP rejeitando `NaN` e `Infinity` com HTTP 400 Bad Request.
+
+4. **Lacunas de Fail-Fast e Cópia Defensiva:**
+   - **Diagnóstico:** Faltavam testes comprovando propagação imediata de `DataAccessException` em `EstoqueController.consultar()` e em `JdbcEstoqueStorage.tamanho()` / `buscarPorId()`, além de teste confirmando que `ListaEstoqueStorage.listar()` retorna cópia desacoplada que não polui o estado interno se modificada.
+   - **Correção:** Implementados testes em `EstoqueControllerTest`, `JdbcEstoqueStorageTest` e `ListaEstoqueStorageTest`.
+
+5. **Caracterização de `service.listarEstoque()` e Asserções Pós-Reinício:**
+   - **Diagnóstico:** `EstoqueServiceCaracterizacaoTest` cobria apenas `listarTodas()`, não exercitando `listarEstoque()`. Além disso, `BolsaPersistidaIT` validava apenas `listar()` pós-reinício, sem assertar `listarTodas()`.
+   - **Correção:** Adicionados os respectivos testes e asserções.
+
+---
+
+### 7. Validação de Não-Regressão Geral
 
 - **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
 - **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **144 testes aprovados** (`mvnw.cmd test`, tempo ~19.0s, 0 falhas, 0 erros, 0 pulados).
+- **Suíte Completa Java:** **151 testes aprovados** (`mvnw.cmd test`, tempo ~22.0s, 0 falhas, 0 erros, 0 pulados).
 - **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`mvnw.cmd test-compile`).
 
 ---
 
-### 7. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
+### 8. Resumo Padronizado de Fechamento da Etapa 4 (Protocolo Obrigatório)
 
-- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída e Auditada (Revisão Adversarial R2 - Fechamento Definitivo)**.
+- **Etapa e estado:** Etapa 4 (E2: H2 — Listagem e Consulta Persistente) — **Concluída e Auditada (Revisão Adversarial R3 - Fechamento Definitivo)**.
 - **Mudanças:** 
   - Adição do método `List<Bolsa> listar()` na interface `EstoqueStorage`.
   - Implementação de `listar()` em `ListaEstoqueStorage` (`@Profile({"u1", "default"})`), retornando `new ArrayList<>(Arrays.asList(listaEstoque.toArray()))` e preservando a ordem LIFO da cabeça para cauda.
   - Implementação de `listar()` em `JdbcEstoqueStorage` (`@Profile("infra")`), executando query SQL com `ORDER BY id_seq DESC` sob `@Transactional(readOnly = true)`, retornando lista vazia quando o banco estiver limpo, suportando múltiplas ocorrências de IDs duplicados e propagando falhas sem fallback silencioso para memória.
   - Integração do método `listarEstoque()` em `EstoqueService` e refatoração do endpoint `GET /api/estoque` em `EstoqueController` para retornar o envelope JSON padronizado `{"bolsas": [...], "tamanho": N}`, com tamanho derivado deterministicamente de `lista.size()`, sem queries SQL duplicadas.
   - Correção de poluição de estado cruzada em `BolsaPersistidaIT` com `@BeforeEach` para limpeza da tabela `bolsas`.
-  - Criação de `EstoqueControllerTest` com 13 testes unitários puros isolados no Nível 1.
-  - Implementação do teste de aceitação CA2.4/T2.3 `deveConsultarBolsaExistenteRetornandoMaisRecente()` em `EstoqueControllerIT` e caracterização simétrica em `EstoqueControllerCaracterizacaoTest`.
-  - Blindagem contra elementos nulos na lista e fronteira de 50 caracteres em `EstoqueService` e `ListaEstoqueStorage`.
+  - Criação de `EstoqueControllerTest` com 14 testes unitários puros isolados no Nível 1.
+  - Implementação dos testes de aceitação CA2.2/T2.4 (`deveListarTodasBolsasComEnvelope`) e CA2.4/T2.3 (`deveConsultarBolsaExistenteRetornandoMaisRecente`) em `EstoqueControllerIT` e caracterizações simétricas em `EstoqueControllerCaracterizacaoTest`.
+  - Blindagem contra números não-finitos (`NaN`/`Infinity`), elementos nulos na lista e fronteira de 50 caracteres em `EstoqueService` e `ListaEstoqueStorage`.
   - A história H3 (remoção persistente) permanece estritamente pendente para a Etapa 5, com testes comprovando lançamento de `UnsupportedOperationException`.
 - **Verificação:** 
-  - 144/144 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~19.0s).
+  - 151/151 testes Java unitários e de caracterização aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~22.0s).
   - 19/19 classes de testes compiladas com sucesso via `.\mvnw.cmd test-compile`.
   - Sequência rastreável Red → Green comprovada com commits no Git (`test:` e `feat:`).
   - 54/54 testes em C aprovados (lista e fila encadeadas da U1).
