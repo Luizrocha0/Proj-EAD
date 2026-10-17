@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -92,7 +93,7 @@ public class EstoqueController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> listar() {
-        Bolsa[] bolsas = estoqueService.listarTodas();
+        List<Bolsa> bolsas = estoqueService.listarEstoque();
         var lista = new java.util.ArrayList<Map<String, Object>>();
         for (Bolsa b : bolsas) {
             lista.add(Map.of(
