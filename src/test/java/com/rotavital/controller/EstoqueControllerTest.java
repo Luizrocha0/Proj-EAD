@@ -215,7 +215,7 @@ class EstoqueControllerTest {
     @Test
     @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} deve remover bolsa existente e retornar 200")
     void deveRemoverBolsaComSucesso() {
-        when(estoqueService.remover("BOLSA-001")).thenReturn(true);
+        when(estoqueService.removerBolsa("BOLSA-001")).thenReturn(true);
         when(estoqueService.tamanho()).thenReturn(0);
 
         ResponseEntity<Map<String, Object>> response = controller.remover("BOLSA-001");
@@ -224,34 +224,36 @@ class EstoqueControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Bolsa removida", response.getBody().get("mensagem"));
         assertEquals(0, response.getBody().get("tamanho"));
+        verify(estoqueService, times(1)).removerBolsa("BOLSA-001");
     }
 
     @Test
     @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} deve retornar 404 para id inexistente, nulo ou em branco")
     void deveRetornar404AoRemoverIdInexistenteOuVazio() {
-        when(estoqueService.remover("BOLSA-INEXISTENTE")).thenReturn(false);
+        when(estoqueService.removerBolsa("BOLSA-INEXISTENTE")).thenReturn(false);
 
         assertEquals(HttpStatus.NOT_FOUND, controller.remover("BOLSA-INEXISTENTE").getStatusCode());
         assertEquals(HttpStatus.NOT_FOUND, controller.remover(null).getStatusCode());
         assertEquals(HttpStatus.NOT_FOUND, controller.remover("   ").getStatusCode());
+        verify(estoqueService, times(1)).removerBolsa("BOLSA-INEXISTENTE");
     }
 
     @Test
     @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} deve fazer trim no id recebido")
     void deveFazerTrimNoIdAoRemover() {
-        when(estoqueService.remover("BOLSA-TRIM")).thenReturn(true);
+        when(estoqueService.removerBolsa("BOLSA-TRIM")).thenReturn(true);
         when(estoqueService.tamanho()).thenReturn(5);
 
         ResponseEntity<Map<String, Object>> response = controller.remover("   BOLSA-TRIM   ");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(estoqueService).remover("BOLSA-TRIM");
+        verify(estoqueService).removerBolsa("BOLSA-TRIM");
     }
 
     @Test
     @DisplayName("H3 / Nível 1 / Fail-Fast: DELETE deve propagar DataAccessException imediatamente sem fallback")
     void devePropagarDataAccessExceptionAoRemoverQuandoServiceFalhar() {
-        when(estoqueService.remover("BOLSA-FAIL"))
+        when(estoqueService.removerBolsa("BOLSA-FAIL"))
                 .thenThrow(new DataAccessException("Falha de conexão no banco") {});
 
         assertThrows(DataAccessException.class, () -> controller.remover("BOLSA-FAIL"));

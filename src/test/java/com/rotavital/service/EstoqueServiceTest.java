@@ -105,6 +105,17 @@ class EstoqueServiceTest {
     }
 
     @Test
+    @DisplayName("H3 / T3.3: removerBolsa deve fazer trim no ID antes de delegar para o storage")
+    void deveFazerTrimNoIdAoRemoverBolsa() {
+        when(storage.removerPorId("BOLSA-TRIM")).thenReturn(true);
+
+        boolean removido = service.removerBolsa("   BOLSA-TRIM   ");
+
+        assertTrue(removido);
+        verify(storage, times(1)).removerPorId("BOLSA-TRIM");
+    }
+
+    @Test
     @DisplayName("T1.3: Deve delegar listarTodas para storage.listarTodas()")
     void deveDelegarListarTodasParaStorage() {
         Bolsa[] bolsas = new Bolsa[]{criarBolsa("B-1"), criarBolsa("B-2")};
