@@ -94,6 +94,25 @@ class EstoqueControllerTest {
     }
 
     @Test
+    @DisplayName("Adversarial / Nível 1: GET /api/estoque deve ignorar elementos nulos na lista preservando consistência de tamanho")
+    void deveIgnorarElementosNulosNaListaDeEstoquePreservandoConsistenciaDeTamanho() {
+        Bolsa b1 = criarBolsa("BOLSA-001", "O+", 450.0, "Doador 1");
+        java.util.List<Bolsa> listaComNulo = java.util.Arrays.asList(b1, null);
+        when(estoqueService.listarEstoque()).thenReturn(listaComNulo);
+
+        ResponseEntity<Map<String, Object>> response = controller.listar();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().get("tamanho"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> bolsas = (List<Map<String, Object>>) response.getBody().get("bolsas");
+        assertEquals(1, bolsas.size());
+        assertEquals("BOLSA-001", bolsas.get(0).get("id"));
+    }
+
+    @Test
     @DisplayName("H2 / Fail-Fast: GET /api/estoque deve propagar DataAccessException imediatamente sem fallback")
     void devePropagarDataAccessExceptionSemFallbackEmListar() {
         when(estoqueService.listarEstoque()).thenThrow(new DataAccessException("Simulando falha de conectividade") {});

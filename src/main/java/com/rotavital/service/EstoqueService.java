@@ -45,7 +45,7 @@ public class EstoqueService {
      * Consulta uma bolsa pelo ID delegando para o storage.
      */
     public Optional<Bolsa> consultar(String id) {
-        if (id == null || id.isBlank()) {
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
             return Optional.empty();
         }
         return storage.buscarPorId(id.trim());
@@ -57,7 +57,7 @@ public class EstoqueService {
      * @return true se encontrada e removida
      */
     public boolean remover(String id) {
-        if (id == null || id.isBlank()) {
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
             return false;
         }
         return storage.removerPorId(id.trim());

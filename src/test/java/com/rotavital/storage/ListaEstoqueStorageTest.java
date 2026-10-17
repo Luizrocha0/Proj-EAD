@@ -86,17 +86,19 @@ class ListaEstoqueStorageTest {
     }
 
     @Test
-    @DisplayName("Adversarial: Deve retornar Optional vazio para busca com id nulo ou em branco")
+    @DisplayName("Adversarial: Deve retornar Optional vazio para busca com id nulo, em branco ou excedendo 50 caracteres")
     void deveRetornarVazioAoConsultarIdNuloOuEmBranco() {
         assertTrue(storage.buscarPorId(null).isEmpty());
         assertTrue(storage.buscarPorId("   ").isEmpty());
+        assertTrue(storage.buscarPorId("A".repeat(51)).isEmpty());
     }
 
     @Test
-    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo ou em branco")
+    @DisplayName("Adversarial: Deve retornar false para remoção com id nulo, em branco ou excedendo 50 caracteres")
     void deveRetornarFalseAoRemoverIdNuloOuEmBranco() {
         assertFalse(storage.removerPorId(null));
         assertFalse(storage.removerPorId("   "));
+        assertFalse(storage.removerPorId("A".repeat(51)));
     }
 
     @Test

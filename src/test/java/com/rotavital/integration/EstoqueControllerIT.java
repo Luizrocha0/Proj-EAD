@@ -248,4 +248,40 @@ class EstoqueControllerIT extends AbstractPostgresIT {
                 .andExpect(jsonPath("$.bolsas[1].id", is("BOLSA-DUP-REST")))
                 .andExpect(jsonPath("$.bolsas[1].doador", is("Doador Antigo")));
     }
+
+    @Test
+    @DisplayName("H2 / T2.3 / Aceitação: GET /api/estoque/{id} com IDs duplicados sob perfil infra deve retornar a ocorrência mais recente")
+    void deveConsultarBolsaExistenteRetornandoMaisRecente() throws Exception {
+        String jsonDup1 = """
+            {
+                "id": "BOLSA-DUP-PONTUAL-INFRA",
+                "tipoSanguineo": "O+",
+                "volumeMl": 400.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "Doador Antigo"
+            }
+            """;
+        String jsonDup2 = """
+            {
+                "id": "BOLSA-DUP-PONTUAL-INFRA",
+                "tipoSanguineo": "O+",
+                "volumeMl": 460.0,
+                "dataColeta": "2026-09-02",
+                "validade": "2026-11-02",
+                "doador": "Doador Recente"
+            }
+            """;
+
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/estoque").contentType(MediaType.APPLICATION_JSON).content(jsonDup2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/estoque/BOLSA-DUP-PONTUAL-INFRA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is("BOLSA-DUP-PONTUAL-INFRA")))
+                .andExpect(jsonPath("$.doador", is("Doador Recente")))
+                .andExpect(jsonPath("$.volumeMl", is(460.0)));
+    }
 }

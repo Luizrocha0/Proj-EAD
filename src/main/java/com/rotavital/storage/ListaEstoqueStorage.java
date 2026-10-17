@@ -23,7 +23,7 @@ public class ListaEstoqueStorage implements EstoqueStorage {
 
     @Override
     public Optional<Bolsa> buscarPorId(String id) {
-        if (id == null || id.isBlank()) {
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
             return Optional.empty();
         }
         return listaEstoque.consultar(id.trim());
@@ -31,7 +31,7 @@ public class ListaEstoqueStorage implements EstoqueStorage {
 
     @Override
     public boolean removerPorId(String id) {
-        if (id == null || id.isBlank()) {
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
             return false;
         }
         return listaEstoque.remover(id.trim());
