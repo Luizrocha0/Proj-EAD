@@ -42,7 +42,7 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
     @Override
     @Transactional(readOnly = true)
     public Optional<Bolsa> buscarPorId(String id) {
-        if (id == null || id.isBlank()) {
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
             return Optional.empty();
         }
         String sql = """
