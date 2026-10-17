@@ -153,4 +153,37 @@ class ListaEstoqueStorageTest {
         assertEquals(2, storage.tamanho(), "Tamanho interno do storage não deve ser afetado pela modificação da lista");
         assertEquals(2, storage.listar().size(), "Nova chamada a listar() deve recuperar todas as bolsas intactas");
     }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve remover apenas a ocorrência mais recente sob IDs duplicados em memória")
+    void deveRemoverApenasOcorrenciaMaisRecenteSobIdsDuplicadosEmMemoria() {
+        storage.salvar(criarBolsa("BOLSA-DUP", "O+", 400.0, "Doador Antigo"));
+        storage.salvar(criarBolsa("BOLSA-DUP", "O+", 460.0, "Doador Recente"));
+        assertEquals(2, storage.tamanho());
+
+        boolean removido = storage.removerPorId("BOLSA-DUP");
+        assertTrue(removido, "Primeira remoção deve retornar true");
+        assertEquals(1, storage.tamanho(), "Tamanho deve decrementar para 1");
+
+        Optional<Bolsa> restante = storage.buscarPorId("BOLSA-DUP");
+        assertTrue(restante.isPresent());
+        assertEquals("Doador Antigo", restante.get().getDoador(), "A ocorrência mais antiga deve permanecer intacta");
+
+        boolean removidoSegundo = storage.removerPorId("BOLSA-DUP");
+        assertTrue(removidoSegundo, "Segunda remoção deve remover a ocorrência restante");
+        assertEquals(0, storage.tamanho());
+        assertTrue(storage.buscarPorId("BOLSA-DUP").isEmpty());
+
+        assertFalse(storage.removerPorId("BOLSA-DUP"), "Terceira remoção em lista vazia deve retornar false");
+    }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve retornar false ao tentar remover bolsa inexistente com estoque vazio ou populado")
+    void deveRetornarFalseAoTentarRemoverBolsaInexistenteEmMemoria() {
+        assertFalse(storage.removerPorId("BOLSA-INEXISTENTE"), "Remoção em estoque vazio deve retornar false");
+
+        storage.salvar(criarBolsa("BOLSA-001", "A+", 450.0, "Doador"));
+        assertFalse(storage.removerPorId("BOLSA-OUTRA"), "Remoção de ID inexistente com estoque populado deve retornar false");
+        assertEquals(1, storage.tamanho(), "Tamanho não deve ser alterado");
+    }
 }
