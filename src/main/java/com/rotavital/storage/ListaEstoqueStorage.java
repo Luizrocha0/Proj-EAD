@@ -39,7 +39,7 @@ public class ListaEstoqueStorage implements EstoqueStorage {
 
     @Override
     public List<Bolsa> listar() {
-        return Arrays.asList(listaEstoque.toArray());
+        return new java.util.ArrayList<>(Arrays.asList(listaEstoque.toArray()));
     }
 
     @Override
