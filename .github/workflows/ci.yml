@@ -45,7 +45,7 @@ jobs:
         working-directory: aed-c
         run: make test
         env:
-          CFLAGS: "-Wall -Wextra -std=c11 -fsanitize=address,undefined"
+          CFLAGS: "-Wall -Wextra -std=c11 -g -fsanitize=address,undefined"
           LDFLAGS: "-fsanitize=address,undefined"
 
       - name: Confirmar aprovação dos testes C sem vazamento de memória
@@ -70,6 +70,7 @@ jobs:
 
       - name: Executar testes unitários rápidos via Surefire
         run: |
+          sed -i 's/\r$//' mvnw
           chmod +x mvnw
           ./mvnw test --no-transfer-progress
 
@@ -101,6 +102,7 @@ jobs:
 
       - name: Executar testes de integração com PostgreSQL Real via Testcontainers
         run: |
+          sed -i 's/\r$//' mvnw
           chmod +x mvnw
           ./mvnw -Pintegration verify --no-transfer-progress
 
@@ -221,7 +223,16 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Smoke Test de ponta a ponta (Actuator com PostgreSQL + CRUD completo + 404) aprovado!"
+          echo "9. Validando retorno 400 para payload com dados inválidos..."
+          BAD_REQ_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/estoque \
+            -H "Content-Type: application/json" \
+            -d '{"id":""}')
+          if [ "$BAD_REQ_CODE" != "400" ]; then
+            echo "❌ Erro: Esperado HTTP 400 para payload inválido, recebido $BAD_REQ_CODE"
+            exit 1
+          fi
+
+          echo "✅ Smoke Test de ponta a ponta (Actuator com PostgreSQL + CRUD completo + 404 + 400) aprovado!"
 
       - name: Coletar logs e encerrar ambiente containerizado
         if: always()
@@ -266,13 +277,14 @@ jobs:
             echo "❌ RENDER_APP_URL não configurado."
             exit 1
           fi
+          APP_URL="${RENDER_APP_URL%/}"
           echo "Aguardando Render iniciar a instância (limite de 5 minutos)..."
           MAX_RETRIES=30
           INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_APP_URL/actuator/health")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/actuator/health")
             if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo — $RENDER_APP_URL"
+              echo "✅ Aplicação em produção respondendo — $APP_URL"
               exit 0
             fi
             echo "Tentativa $i falhou (status $STATUS). Aguardando $INTERVAL segundos..."

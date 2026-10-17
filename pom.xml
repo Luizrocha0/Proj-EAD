@@ -119,6 +119,9 @@
                     <includes>
                         <include>**/*IT.java</include>
                     </includes>
+                    <excludes>
+                        <exclude>**/Abstract*</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
