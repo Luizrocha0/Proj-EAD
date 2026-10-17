@@ -64,6 +64,15 @@ public class EstoqueService {
     }
 
     /**
+     * Remove uma bolsa do estoque pelo ID delegando para remover (H3).
+     *
+     * @return true se encontrada e removida
+     */
+    public boolean removerBolsa(String id) {
+        return remover(id);
+    }
+
+    /**
      * Retorna o tamanho atual do estoque delegando para o storage.
      */
     public int tamanho() {
