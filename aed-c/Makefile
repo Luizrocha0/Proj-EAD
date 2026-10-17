@@ -9,8 +9,8 @@
 #   make test_fila  — compila e executa apenas testes da fila
 
 CC      = gcc
-CFLAGS  = -Wall -Wextra -std=c11 -g -fsanitize=address,undefined
-LDFLAGS = -fsanitize=address,undefined
+CFLAGS  ?= -Wall -Wextra -std=c11 -g -fsanitize=address,undefined
+LDFLAGS ?= -fsanitize=address,undefined
 INCLUDE = -Iinclude
 
 # ── Alvos ──
@@ -38,13 +38,16 @@ test_fila: tests/test_fila
 # ── Compilação ──
 
 tests/test_lista: src/u1/lista.c tests/test_lista.c include/lista.h include/bolsa.h
-	@mkdir -p tests
 	$(CC) $(CFLAGS) $(INCLUDE) src/u1/lista.c tests/test_lista.c -o tests/test_lista $(LDFLAGS)
 
 tests/test_fila: src/u1/fila.c tests/test_fila.c include/fila.h include/requisicao.h
-	@mkdir -p tests
 	$(CC) $(CFLAGS) $(INCLUDE) src/u1/fila.c tests/test_fila.c -o tests/test_fila $(LDFLAGS)
 
+ifeq ($(OS),Windows_NT)
+    CLEAN_CMD = cmd /c "del /f /q tests\test_lista.exe tests\test_fila.exe tests\test_lista tests\test_fila 2>nul || exit 0"
+else
+    CLEAN_CMD = rm -f tests/test_lista tests/test_fila tests/*.exe
+endif
+
 clean:
-	rm -f tests/test_lista tests/test_fila
-	rm -f tests/*.exe
+	@$(CLEAN_CMD)

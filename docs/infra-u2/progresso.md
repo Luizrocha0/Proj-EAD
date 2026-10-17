@@ -1051,21 +1051,59 @@ Foi criado o documento exaustivo `docs/infra-u2/tdd.md` contendo:
 
 ---
 
-### 5. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+---
 
-- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída**.
+### 5. Auditoria Adversarial (Round 1 — teamwork_preview_reviewer)
+
+Uma auditoria adversarial minuciosa foi conduzida para tensionar a implementação da Etapa 6 em múltiplos eixos:
+
+1. **Quebra do Makefile em Ambientes Windows (`aed-c/Makefile`):**
+   - **Cenário:** Execução de `mingw32-make -C aed-c test` em ambiente de desenvolvimento Windows local.
+   - **Falha detectada:** Erro imediato `Já existe uma subpasta ou um arquivo tests. Erro ao processar: tests. Makefile:41: recipe for target 'tests/test_lista' failed`, além da criação indesejada de uma pasta residual `aed-c/-p/`.
+   - **Causa raiz:** O comando `@mkdir -p tests` no Makefile invoca `cmd.exe` no Windows. Como `cmd.exe` não suporta a flag `-p`, ele interpreta `-p` e `tests` como nomes de pastas a criar e falha porque `tests` já existe. Além disso, a falta de definição explícita de `CC = gcc` causava tentativa de invocar `cc` inexistente no Windows MinGW.
+   - **Correção:** Remoção da chamada `@mkdir -p tests` (a pasta `tests` já é rastreada pelo Git e sempre existe), parametrização dos flags via `?=` (`CFLAGS ?= ...`, `LDFLAGS ?= ...`) e definição de comando de limpeza cross-platform (`ifeq ($(OS),Windows_NT)`). Agora `mingw32-make -C aed-c test` e `clean` executam com sucesso 100% tanto no Linux (CI) quanto no Windows (desenvolvedor).
+
+2. **Blindagem do Timeout de Saúde no Gate 5 do CI (`.github/workflows/ci.yml`):**
+   - **Vulnerabilidade detectada:** O loop de espera `Aguardando contêineres atingirem status 'healthy'` realizava até 30 iterações. Caso os contêineres não atingissem `healthy` dentro do limite, o loop simplesmente encerrava e executava `docker compose ps` (código de saída 0), mascarando a falha de inicialização e passando falsamente o step de espera.
+   - **Correção:** Adição de guarda fail-fast após o loop (`if [ "$API_HEALTH" != '"healthy"' ] || [ "$DB_HEALTH" != '"healthy"' ]; then exit 1; fi`) com emissão de logs (`docker compose logs`), além da ampliação preventiva da janela de 30 para 45 iterações (90 segundos), garantindo margem segura para o startup do PostgreSQL + Flyway + Spring Boot em runners compartilhados do GitHub Actions.
+
+3. **Ampliação do Smoke Test Containerizado para CRUD Completo (Gate 5):**
+   - **Fragilidade detectada:** O smoke test original limitava-se a chamar `GET /api/estoque` em uma tabela vazia e o Actuator Health. Se houvesse qualquer restrição de escrita, falha de DDL ou bloqueio de transação no contêiner PostgreSQL real, o teste não detectaria.
+   - **Correção:** Expansão do smoke test para validar o fluxo CRUD completo:
+     1. Validação de listagem vazia inicial (`"tamanho":0`).
+     2. Inserção via HTTP `POST /api/estoque` de bolsa de teste (`SMOKE-CI-01`) e validação de `tamanho:1`.
+     3. Consulta pontual por ID via HTTP `GET /api/estoque/SMOKE-CI-01` e validação de atributos.
+     4. Consulta de listagem via `GET /api/estoque` comprovando a bolsa retornada no array.
+     5. Exclusão via HTTP `DELETE /api/estoque/SMOKE-CI-01` e confirmação de resposta HTTP 200.
+     6. Consulta final de listagem via `GET /api/estoque` atestando retorno a `tamanho:0`.
+
+4. **Robustez do Webhook de Deploy no Render (Gate 6):**
+   - **Fragilidade detectada:** Concatenação cega `&ref=${{ github.sha }}` poderia resultar em URL malformada caso a secret `RENDER_DEPLOY_HOOK_URL` não contivesse o caractere `?`.
+   - **Correção:** Adição de condicional inteligente em Bash para verificar se a URL já possui `?`, concatenando `&ref=` ou `?ref=` conforme apropriado.
+
+5. **Roteiro do Compose em `docs/infra-u2/tdd.md`:**
+   - Inclusão de `-e PGPASSWORD=rotavital` no comando `docker compose exec db psql` para permitir execução não-interativa imediata sem requisição de senha em terminais automatizados.
+
+---
+
+### 6. Resumo Padronizado de Fechamento da Etapa 6 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 6 (E2: Integração e Gates na Esteira) — **Concluída e Auditada (Revisão Adversarial R1 - Fechamento Definitivo)**.
 - **Mudanças:** 
   - Adição do perfil Maven `integration` no `pom.xml` para ativação formal de Failsafe e Testcontainers via `.\mvnw.cmd -Pintegration verify`.
   - Reestruturação de `.github/workflows/ci.yml` em 6 gates sequenciais/dependentes (Benchmarks Python, Testes C com sanitizers, Testes Java Unitários Surefire, Testes Java Integração/Aceitação Failsafe com Testcontainers, Docker Build sem `-DskipTests` com Smoke Test Compose, e Deploy no Render formalmente preparado mas pendente para a Etapa 7).
   - Eliminação completa de contornos de falha (`continue-on-error` e `|| true`).
+  - Blindagem do Gate 5: timeout fail-fast estrito com coleta de logs e expansão do Smoke Test containerizado para validação de ciclo de vida CRUD completo (POST, GET {id}, GET listagem, DELETE e GET confirmação) contra PostgreSQL real.
+  - Correção cross-platform de `aed-c/Makefile` para execução limpa de testes C tanto no Linux (CI) quanto no Windows via MinGW (`mingw32-make test` e `clean`).
   - Criação do documento `docs/infra-u2/tdd.md` com a metodologia Red → Green, diferenciação pedagógica U1 vs U2, matriz de rastreabilidade de commits e roteiro de demonstração do Compose.
-  - Atualização de `docs/infra-u2/progresso.md` marcando a Etapa 6 como Concluída.
+  - Atualização de `docs/infra-u2/progresso.md` marcando a Etapa 6 como Concluída e auditada.
 - **Verificação:** 
   - **183/183 testes Java unitários e de caracterização aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~19s).
-  - Comprovação de falha ruidosa (`BUILD FAILURE`, código 1) no `.\mvnw.cmd verify` quando o Docker Desktop não está em execução, garantindo que testes de integração não são silenciados.
+  - **Comprovação de falha ruidosa (`BUILD FAILURE`, código 1)** no `.\mvnw.cmd verify` quando o Docker Desktop não está em execução, garantindo que testes de integração não são silenciados.
+  - **Comprovação de segregação limpa (`BUILD SUCCESS`)** via `.\mvnw.cmd -DskipITs verify`, executando todos os 183 testes unitários e pulando Failsafe conforme o padrão Maven.
   - Validação da ativação do perfil `integration` via `.\mvnw.cmd -Pintegration help:active-profiles`.
-  - 54/54 testes em C aprovados localmente com zero vazamentos (23 em `test_lista` e 31 em `test_fila`).
-  - 7/7 testes de benchmarks em Python aprovados e checagem `--check` de 8 configurações bem-sucedida.
+  - **54/54 testes em C aprovados** localmente com zero vazamentos (23 em `test_lista` e 31 em `test_fila`), executados diretamente e via `mingw32-make test`.
+  - **7/7 testes de benchmarks em Python aprovados** e checagem `--check` de 8 configurações bem-sucedida.
   - Validação da sintaxe do Compose via `docker compose config --quiet` (saída 0).
 - **Pendências:** 
   - A Etapa 7 (Branches, GitHub Flow, proteção de branch `main` e deploy final no Render) permanece expressamente **Pendente**.
