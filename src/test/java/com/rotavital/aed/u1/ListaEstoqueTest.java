@@ -227,7 +227,31 @@ class ListaEstoqueTest {
             assertTrue(restante.isPresent());
             assertEquals("João Silva", restante.get().getDoador(), "A ocorrência original deve permanecer");
         }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId com duplicatas no meio da lista deve remover a ocorrência mais recente e manter anterior")
+        void deveRemoverPorIdDuplicataNoMeioDaLista() {
+            Bolsa b003Recente = new Bolsa("BOLSA-003", "B+", 420.0,
+                    LocalDate.of(2026, 9, 20), LocalDate.of(2026, 11, 20), "Carlos Oliveira Recente");
+            Bolsa bCabeca = new Bolsa("BOLSA-999", "A+", 450.0,
+                    LocalDate.of(2026, 9, 21), LocalDate.of(2026, 11, 21), "Doador Cabeca");
+            lista.inserir(b003Recente);
+            lista.inserir(bCabeca);
+            assertEquals(7, lista.getTamanho());
+
+            assertTrue(lista.removerPorId("BOLSA-003"), "Deve remover a duplicata mais recente no meio da cadeia");
+            assertEquals(6, lista.getTamanho());
+
+            Optional<Bolsa> cabeca = lista.consultar("BOLSA-999");
+            assertTrue(cabeca.isPresent());
+
+            Optional<Bolsa> restante = lista.consultar("BOLSA-003");
+            assertTrue(restante.isPresent());
+            assertEquals("Carlos Oliveira", restante.get().getDoador());
+            assertEquals(400.0, restante.get().getVolumeMl());
+        }
     }
+
 
     /**
      * Insere as 5 bolsas das fixtures na ordem: 001, 002, 003, 004, 005.

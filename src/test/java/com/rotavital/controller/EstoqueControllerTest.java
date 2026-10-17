@@ -258,4 +258,33 @@ class EstoqueControllerTest {
 
         assertThrows(DataAccessException.class, () -> controller.remover("BOLSA-FAIL"));
     }
+
+    @Test
+    @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} com ID excedendo 50 caracteres deve retornar 404")
+    void deveRetornar404AoRemoverIdExcedendo50Caracteres() {
+        String idGigante = "A".repeat(51);
+        when(estoqueService.removerBolsa(idGigante)).thenReturn(false);
+
+        ResponseEntity<Map<String, Object>> response = controller.remover(idGigante);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        verify(estoqueService, times(1)).removerBolsa(idGigante);
+    }
+
+    @Test
+    @DisplayName("H3 / Nível 1: DELETE /api/estoque/{id} deve preservar encoding UTF-8 e símbolos alfanuméricos")
+    void devePreservarUtf8ESimbolosAoRemoverBolsa() {
+        String idUtf8 = "BOLSA_UTF8-01-João";
+        when(estoqueService.removerBolsa(idUtf8)).thenReturn(true);
+        when(estoqueService.tamanho()).thenReturn(3);
+
+        ResponseEntity<Map<String, Object>> response = controller.remover(idUtf8);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Bolsa removida", response.getBody().get("mensagem"));
+        assertEquals(3, response.getBody().get("tamanho"));
+        verify(estoqueService, times(1)).removerBolsa(idUtf8);
+    }
 }
+
