@@ -95,19 +95,21 @@ public class EstoqueController {
     public ResponseEntity<Map<String, Object>> listar() {
         List<Bolsa> bolsas = estoqueService.listarEstoque();
         var lista = new java.util.ArrayList<Map<String, Object>>();
-        for (Bolsa b : bolsas) {
-            lista.add(Map.of(
-                    "id", b.getId(),
-                    "tipoSanguineo", b.getTipoSanguineo(),
-                    "volumeMl", b.getVolumeMl(),
-                    "dataColeta", b.getDataColeta().toString(),
-                    "validade", b.getValidade().toString(),
-                    "doador", b.getDoador()
-            ));
+        if (bolsas != null) {
+            for (Bolsa b : bolsas) {
+                lista.add(Map.of(
+                        "id", b.getId(),
+                        "tipoSanguineo", b.getTipoSanguineo(),
+                        "volumeMl", b.getVolumeMl(),
+                        "dataColeta", b.getDataColeta().toString(),
+                        "validade", b.getValidade().toString(),
+                        "doador", b.getDoador()
+                ));
+            }
         }
         return ResponseEntity.ok(Map.of(
                 "bolsas", lista,
-                "tamanho", estoqueService.tamanho()
+                "tamanho", lista.size()
         ));
     }
 }

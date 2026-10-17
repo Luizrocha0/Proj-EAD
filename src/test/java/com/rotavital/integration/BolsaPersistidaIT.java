@@ -23,7 +23,15 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
     private EstoqueStorage storage;
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Autowired
     private ConfigurableApplicationContext applicationContext;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        jdbcTemplate.execute("DELETE FROM bolsas");
+    }
 
     @Test
     @DirtiesContext
