@@ -468,6 +468,13 @@ Na próxima etapa (**Etapa 2**), será construída a fundação de infraestrutur
   8. `54d83c0` - `test(h1): define testes unitarios para BolsaRequestDTO resiliente (T1.4)`
   9. `badd2a0` - `feat(h1): implementa BolsaRequestDTO e integra com EstoqueController (T1.4)`
   10. `2d0be08` - `test(h1): adiciona bateria de testes de integracao e aceitacao em tres niveis para H1`
+  11. `9ce52f0` - `test(h1): adiciona bateria de 24 testes adversariais para casos de borda e robustez`
+  12. `9811ba9` - `fix(h1): blinda normalizacao de tipos sanguineos, validacao de campos vazios, volumes e salvaguardas de nulidade`
+  13. `aff2511` - `test(h1): adiciona testes para injecao Spring, segregacao H2/H3, UTF-8 e SQL injection`
+  14. `6ee328a` - `fix(h1): adiciona @Autowired no construtor de EstoqueService garantindo DI correta nos perfis`
+  15. `cc2689a` - `docs(infra): atualiza progresso.md com auditoria adversarial R2 e fechamento com 113 testes`
+  16. `2fa1483` - `test(h1): adiciona testes para limites de campos, concorrencia LIFO e HTTP 400`
+  17. `3763d86` - `fix(h1): valida limites maximos de id, tipoSanguineo e doador prevenindo erro 500 no Postgres`
 - **Regra de Integridade:** As estruturas pedagógicas de AED da U1 (`ListaEstoque`, `NoBolsa`, `FilaRequisicoes`) e testes C/Python foram 100% preservados sem alterações. As histórias H2 (listagem do estoque) e H3 (remoção persistente) permanecem expressamente pendentes para as Etapas 4 e 5.
 
 ---
@@ -578,34 +585,57 @@ Uma segunda rodada adversarial aprofundada foi realizada, revelando uma falha ar
 
 ---
 
-### 6. Validação de Não-Regressão da U1
+### 6. Auditoria Adversarial R3: Limites de Tamanho de Colunas no DTO e Concorrência Monotônica LIFO
 
-- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
-- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **113 testes aprovados** (`mvnw.cmd test`, tempo ~21s, 0 falhas, 0 erros).
+Uma terceira e conclusiva rodada de auditoria adversarial atacou os casos de borda e robustez remanescentes:
+
+1. **Blindagem de Limites de Colunas no DTO contra Erro 500 no PostgreSQL:**
+   - **Diagnóstico:** A DDL V1 estabelece limites estritos de colunas no PostgreSQL (`id VARCHAR(50)`, `tipo_sanguineo VARCHAR(10)` e `doador VARCHAR(255)`). Contudo, `BolsaRequestDTO.toDomain()` validava apenas strings vazias/nulas, permitindo entradas com comprimentos arbitrários (ex: `id` com 51 chars ou `doador` com 256 chars). Sob o perfil `infra`, essas entradas geravam `DataIntegrityViolationException` / `DataAccessException` no PostgreSQL (`value too long for type character varying(50)`). Como o `EstoqueController` não capturava exceções de persistência no bloco de validação HTTP, o erro escalava para **HTTP 500 Internal Server Error** em vez de **HTTP 400 Bad Request**.
+   - **Correção:** Adicionou-se validação de tamanho máximo no método `toDomain()` de `BolsaRequestDTO`:
+     - `idLimpo.length() > 50` $\rightarrow$ `IllegalArgumentException("id não pode exceder 50 caracteres")`
+     - `tipoNormalizado.length() > 10` $\rightarrow$ `IllegalArgumentException("tipoSanguineo não pode exceder 10 caracteres")`
+     - `doadorLimpo.length() > 255` $\rightarrow$ `IllegalArgumentException("doador não pode exceder 255 caracteres")`
+     Adicionalmente, em `JdbcEstoqueStorage.buscarPorId`, adicionou-se guarda de escape rápido (`id.trim().length() > 50` $\rightarrow$ `Optional.empty()`), evitando submeter queries desnecessárias ao banco para chaves que nunca existirão no esquema.
+   - **Comprovação por Testes:** Novos testes unitários em `BolsaRequestDTOTest`, testes de caracterização no controller em `EstoqueControllerCaracterizacaoTest`, busca com escape rápido em `JdbcEstoqueStorageTest` e teste de aceitação contra PostgreSQL real em `EstoqueControllerIT`.
+
+2. **Validação Concorrente de Monotonicidade LIFO sob Chaves de Negócio Repetidas:**
+   - **Diagnóstico:** O requisito R2/T1.2 exige que consultas por ID recuperem deterministicamente a ocorrência mais recente sob chaves duplicadas (`ORDER BY id_seq DESC LIMIT 1`). Sob concorrência severa de múltiplas transações simultâneas inserindo a mesma chave de negócio, foi validada a atomicidade e monotonicidade estrita da sequence `BIGSERIAL` do PostgreSQL.
+   - **Comprovação por Testes:**
+     - Teste unitário em `JdbcEstoqueStorageTest` comprovando a presença explícita de `ORDER BY id_seq DESC` e `LIMIT 1` no SQL gerado e determinismo em chamadas consecutivas.
+     - Teste de integração concorrente em `JdbcEstoqueStorageIT` disparando 10 threads simultâneas via `ExecutorService` e `CountDownLatch` sobre a mesma chave (`"BOLSA-CONCORRENTE"`), comprovando persistência de todas as 10 tuplas no banco (`tamanho == 10`), ausência de deadlocks e recuperação determinística da bolsa com maior `id_seq`.
+
+- **Expansão da Suíte de Testes:** A suíte Java saltou de **113** para **120 testes aprovados com 100% de sucesso** no Surefire (`mvnw.cmd test`, tempo ~14.6s, 0 falhas, 0 erros).
 
 ---
 
-### 7. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+### 7. Validação de Não-Regressão da U1
 
-- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída e Auditada (R2)**.
+- **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
+- **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
+- **Suíte Completa Java:** **120 testes aprovados** (`mvnw.cmd test`, tempo ~14.6s, 0 falhas, 0 erros).
+
+---
+
+### 8. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída e Auditada (R3 - Rodada Final)**.
 - **Mudanças:** 
   - Criação da interface `EstoqueStorage` desacoplando a camada de serviço do meio físico de armazenamento.
   - Implementação do adaptador de memória `ListaEstoqueStorage` com anotações `@Component` e `@Profile({"u1", "default"})`, delegando diretamente para a lista simplesmente encadeada pedagógica com nós `NoBolsa`.
   - Implementação do adaptador relacional `JdbcEstoqueStorage` sob `@Profile("infra")` utilizando Spring `JdbcTemplate`, transações isoladas (`@Transactional`), mapeamento via `RowMapper<Bolsa>`, consulta LIFO da ocorrência mais recente (`ORDER BY id_seq DESC LIMIT 1`) e fail-fast em falhas de persistência.
   - Refatoração de `EstoqueService` com injeção `@Autowired` de `EstoqueStorage`, garantindo amarração correta do bean de persistência sob o perfil `infra` e mantendo construtor padrão para caracterização legada.
-  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0), com normalização de tipos sanguíneos (`AB+`, `O+`), validação de campos vazios/em branco, volume positivo, consistência temporal de validade e preservação de UTF-8.
-  - Tratamento resiliente de validações em `EstoqueController` respondendo com HTTP 400 Bad Request.
+  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0), com normalização de tipos sanguíneos (`AB+`, `O+`), validação de campos vazios/em branco, volume positivo, consistência temporal de validade, limites de tamanho de colunas (`id` $\le 50$, `tipoSanguineo` $\le 10$, `doador` $\le 255$) e preservação de UTF-8.
+  - Tratamento resiliente de validações em `EstoqueController` respondendo com HTTP 400 Bad Request (eliminando erros 500 por estouro de coluna).
   - Configuração de `<argLine>-Dnet.bytebuddy.experimental=true</argLine>` no `pom.xml` para compatibilidade total do Mockito com o runtime Java 25.
-  - Suíte expandida com 13 testes de caracterização legados, 52 testes unitários TDD/adversariais e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
+  - Suíte expandida com 13 testes de caracterização legados, 59 testes unitários TDD/adversariais e baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
   - As histórias H2 (listagem de estoque) e H3 (remoção persistente) foram expressamente mantidas pendentes para as Etapas 4 e 5, com testes comprovando lançamento de `UnsupportedOperationException`.
 - **Verificação:** 
-  - 113/113 testes Java unitários, de caracterização e de injeção de perfis aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
+  - 120/120 testes Java unitários, de caracterização e de injeção de perfis aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~14.6s).
   - Commits rastreáveis registrando estritamente a sequência `test:` e `feat:` no histórico Git.
   - Evidências Red confirmadas com falha técnica legítima (`UnsupportedOperationException` e `AssertionFailedError`) antes de cada implementação Green.
   - 54/54 asserções de testes em C aprovadas (lista encadeada e fila FIFO).
   - 7/7 testes de benchmarks em Python aprovados e integridade estatística validada via `--check`.
-  - Compilação limpa de todas as 18 classes de teste (`mvnw.cmd test-compile`).
+  - Compilação limpa de todas as classes de teste (`mvnw.cmd test-compile`).
 - **Pendências:** 
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
   - A listagem geral persistente do estoque (H2) e a remoção persistente (H3) permanecem expressamente pendentes para as Etapas 4 e 5.
