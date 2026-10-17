@@ -34,7 +34,7 @@ public class ListaEstoqueStorage implements EstoqueStorage {
         if (id == null || id.isBlank() || id.trim().length() > 50) {
             return false;
         }
-        return listaEstoque.remover(id.trim());
+        return listaEstoque.removerPorId(id.trim());
     }
 
     @Override

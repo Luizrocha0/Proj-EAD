@@ -186,4 +186,22 @@ class ListaEstoqueStorageTest {
         assertFalse(storage.removerPorId("BOLSA-OUTRA"), "Remoção de ID inexistente com estoque populado deve retornar false");
         assertEquals(1, storage.tamanho(), "Tamanho não deve ser alterado");
     }
+
+    @Test
+    @DisplayName("H3 / T3.1 / Defensivo: Deve retornar false para ID nulo, em branco ou excedendo 50 caracteres em memória")
+    void deveRetornarFalseParaIdInvalidoEmMemoria() {
+        assertFalse(storage.removerPorId(null));
+        assertFalse(storage.removerPorId("   "));
+        assertFalse(storage.removerPorId("A".repeat(51)));
+    }
+
+    @Test
+    @DisplayName("H3 / T3.1: Deve realizar trim no ID ao remover em memória")
+    void deveFazerTrimNoIdAoRemoverEmMemoria() {
+        storage.salvar(criarBolsa("BOLSA-TRIM", "O+", 450.0, "Doador"));
+        assertEquals(1, storage.tamanho());
+
+        assertTrue(storage.removerPorId("   BOLSA-TRIM   "));
+        assertEquals(0, storage.tamanho());
+    }
 }

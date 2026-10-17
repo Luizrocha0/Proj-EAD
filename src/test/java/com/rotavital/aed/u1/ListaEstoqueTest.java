@@ -200,6 +200,33 @@ class ListaEstoqueTest {
             assertTrue(lista.consultar("BOLSA-004").isPresent());
             assertTrue(lista.consultar("BOLSA-002").isPresent());
         }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId deve delegar para remover com sucesso e integridade")
+        void deveRemoverPorIdComSucesso() {
+            assertTrue(lista.removerPorId("BOLSA-005"), "Deve remover a cabeça via removerPorId");
+            assertEquals(4, lista.getTamanho());
+            assertTrue(lista.consultar("BOLSA-005").isEmpty());
+
+            assertFalse(lista.removerPorId("BOLSA-999"), "Deve retornar false para id inexistente");
+            assertEquals(4, lista.getTamanho());
+        }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId com duplicatas deve remover a ocorrência mais recente da cabeça")
+        void deveRemoverPorIdOcorrenciaMaisRecenteSobDuplicatas() {
+            Bolsa bolsaDupRecente = new Bolsa("BOLSA-001", "O+", 490.0,
+                    LocalDate.of(2026, 9, 25), LocalDate.of(2026, 11, 25), "Doador Recente");
+            lista.inserir(bolsaDupRecente); // inserido na cabeça
+            assertEquals(6, lista.getTamanho());
+
+            assertTrue(lista.removerPorId("BOLSA-001"), "Primeira remoção deve remover a mais recente");
+            assertEquals(5, lista.getTamanho());
+
+            Optional<Bolsa> restante = lista.consultar("BOLSA-001");
+            assertTrue(restante.isPresent());
+            assertEquals("João Silva", restante.get().getDoador(), "A ocorrência original deve permanecer");
+        }
     }
 
     /**

@@ -78,7 +78,7 @@ public class EstoqueController {
         if (id == null || id.isBlank()) {
             return ResponseEntity.notFound().build();
         }
-        boolean removido = estoqueService.remover(id.trim());
+        boolean removido = estoqueService.removerBolsa(id.trim());
         if (removido) {
             return ResponseEntity.ok(Map.of(
                     "mensagem", "Bolsa removida",
