@@ -896,7 +896,8 @@ A implementação foi realizada em incrementos granulares com commits semântico
 | **T3.4** | `test` | `9ac7c3b` | `test(h3): implementa testes de integracao, aceitacao e caracterizacao em 3 niveis para H3` | Criação dos testes de integração em `JdbcEstoqueStorageIT`, persistência pós-reinício em `BolsaPersistidaIT`, aceitação em `EstoqueControllerIT` e caracterização simétrica em `EstoqueControllerCaracterizacaoTest` e `EstoqueServiceCaracterizacaoTest`. | **Green comprovado:** 164/164 testes unitários e de caracterização aprovados no Surefire e 19/19 classes compiladas no test-compile. |
 | **T3.2** | `test` | `b8cab3c` | `test(h3): adiciona teste unitario para preservacao de UTF-8 em removerPorId` | Teste unitário defensivo comprovando que IDs contendo acentuação e caracteres especiais UTF-8 são preservados na execução do `DELETE`. | **Green comprovado:** 24/24 testes em `JdbcEstoqueStorageTest` aprovados. Total de **165 testes Java**. |
 | **H3-Auditoria** | `fix` | `7680687` | `fix(h3): integra removerBolsa no EstoqueController, padroniza removerPorId em ListaEstoque e expande testes defensivos` | Auditoria adversarial R1: integra `removerBolsa` em `EstoqueController` e asserções em `EstoqueControllerTest`, adiciona `removerPorId` em `ListaEstoque`, expande testes em `ListaEstoqueTest` (+2), `EstoqueServiceTest` (+1) e `ListaEstoqueStorageTest` (+2). | **Green comprovado:** **170/170 testes Java aprovados** no Surefire. |
-| **H3-Auditoria-R2** | `test` | `c59eeca` | `test(h3): expande testes defensivos de remocao com UTF-8, fronteira de 50 caracteres e duplicatas no meio da lista` | Auditoria adversarial R2: adiciona testes de remoção de duplicatas no meio da lista encadeada (`ListaEstoqueTest`), UTF-8 em memória (`ListaEstoqueStorageTest`), fronteira de 50 caracteres em `EstoqueServiceCaracterizacaoTest`, fronteira e UTF-8 em `EstoqueControllerTest`, fronteira em `EstoqueControllerCaracterizacaoTest` e aceitação com UTF-8 em `EstoqueControllerIT`. | **Green comprovado:** **176/176 testes Java aprovados** no Surefire. |
+| **H3-Auditoria-R2** | `test` | `c59eeca` | `test(h3): expande testes defensivos de remocao com UTF-8, fronteira de 50 caracteres e duplicatas no meio da lista` | Auditoria adversarial R2: adiciona testes de remoção de duplicatas no meio da lista encadeada (`ListaEstoqueTest`), UTF-8 em memória (`ListaEstoqueStorageTest`), fronteira de 50 caracteres em `EstoqueServiceCaracterizacaoTest`, fronteira e UTF-8 em `EstoqueControllerTest`, fronteira em `EstoqueControllerCaracterizacaoTest` e aceitação com UTF-8 em `EstoqueControllerIT`. | **Green comprovado:** 176/176 testes Java aprovados no Surefire. |
+| **H3-Auditoria-R3** | `test` | `1350bd3` | `test(h3): expande bateria com fronteira valida de 50 caracteres, tripla duplicata e isolamento de prefixos` | Auditoria adversarial R3: adiciona testes de ID com exatamente 50 chars e trim em `ListaEstoqueStorageTest`, tripla duplicata sucessiva, isolamento de prefixos comuns, ID de 50 chars em `JdbcEstoqueStorageTest`, `EstoqueServiceTest`, `EstoqueControllerTest`, `EstoqueControllerCaracterizacaoTest`, `JdbcEstoqueStorageIT` e `EstoqueControllerIT`. | **Green comprovado:** **183/183 testes Java aprovados** no Surefire. |
 
 ---
 
@@ -905,15 +906,15 @@ A implementação foi realizada em incrementos granulares com commits semântico
 | Nível | Arquivo / Classe | Testes Implementados | Escopo / Requisito Validado |
 |---|---|---|---|
 | **Nível 1 (Unitário)** | `ListaEstoqueTest` | 17 testes (+3) | Estrutura encadeada da U1: delegação de `removerPorId`, preservação LIFO sob duplicatas na cabeça e no meio da lista encadeada. |
-| **Nível 1 (Unitário)** | `ListaEstoqueStorageTest` | 17 testes (+3) | Remoção na lista encadeada em memória, LIFO sob duplicatas, decremento de tamanho, estoque vazio, validação de IDs nulos/em branco/$>50$, trim e preservação de UTF-8/símbolos. |
-| **Nível 1 (Unitário)** | `JdbcEstoqueStorageTest` | 24 testes | Subquery SQL serial com `ORDER BY id_seq DESC LIMIT 1`, `rowsAffected > 0`, normalização com trim, propagação de `DataAccessException`, resiliência a SQL injection e UTF-8. |
-| **Nível 1 (Unitário)** | `EstoqueServiceTest` | 15 testes (+1) | Delegação de `remover` e `removerBolsa` para `storage.removerPorId`, normalização via trim, fail-fast e propagação de exceções sem fallback. |
-| **Nível 1 (Unitário)** | `EstoqueControllerTest` | 18 testes (+2) | Endpoint `DELETE /api/estoque/{id}`, status HTTP 200 com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, status 404 para ID inexistente/em branco/$>50$, delegação expressa para `removerBolsa`, preservação de UTF-8 e propagação de falhas de banco. |
+| **Nível 1 (Unitário)** | `ListaEstoqueStorageTest` | 20 testes (+6) | Remoção na lista encadeada em memória, LIFO sob duplicatas, esgotamento de tripla duplicata, decremento de tamanho, estoque vazio, validação de IDs nulos/em branco/$>50$, fronteira exata $\le 50$, isolamento de prefixos comuns, trim e preservação de UTF-8/símbolos. |
+| **Nível 1 (Unitário)** | `JdbcEstoqueStorageTest` | 25 testes (+1) | Subquery SQL serial com `ORDER BY id_seq DESC LIMIT 1`, `rowsAffected > 0`, normalização com trim, ID exato de 50 caracteres, propagação de `DataAccessException`, resiliência a SQL injection e UTF-8. |
+| **Nível 1 (Unitário)** | `EstoqueServiceTest` | 16 testes (+2) | Delegação de `remover` e `removerBolsa` para `storage.removerPorId`, normalização via trim, ID exato de 50 caracteres, fail-fast e propagação de exceções sem fallback. |
+| **Nível 1 (Unitário)** | `EstoqueControllerTest` | 19 testes (+3) | Endpoint `DELETE /api/estoque/{id}`, status HTTP 200 com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, status 404 para ID inexistente/em branco/$>50$, remoção de ID de 50 caracteres, delegação expressa para `removerBolsa`, preservação de UTF-8 e propagação de falhas de banco. |
 | **Nível 1 (Caracterização)** | `EstoqueServiceCaracterizacaoTest` | 12 testes (+1) | Paridade funcional de `remover` e `removerBolsa` sob perfil `u1`, remoção da ocorrência mais recente sob duplicatas e validação de fronteira $> 50$ caracteres. |
-| **Nível 1 (Caracterização)** | `EstoqueControllerCaracterizacaoTest` | 20 testes (+1) | Paridade REST sob perfil `u1`, remoção via HTTP com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, remoção pontual de duplicata, consulta da anterior e status 404 para ID $> 50$ caracteres. |
-| **Nível 2 (Integração)** | `JdbcEstoqueStorageIT` | 14 testes | Execução contra PostgreSQL Real: deleção física na tabela `bolsas`, remoção exclusiva da ocorrência mais recente sob duplicatas, retorno de `false` para ausentes, resiliência a SQL injection. |
+| **Nível 1 (Caracterização)** | `EstoqueControllerCaracterizacaoTest` | 21 testes (+2) | Paridade REST sob perfil `u1`, remoção via HTTP com envelope `{"mensagem": "Bolsa removida", "tamanho": N}`, remoção pontual de duplicata, consulta da anterior, status 404 para ID $> 50$ caracteres e sucesso para ID de 50 caracteres. |
+| **Nível 2 (Integração)** | `JdbcEstoqueStorageIT` | 16 testes (+2) | Execução contra PostgreSQL Real: deleção física na tabela `bolsas`, remoção exclusiva da ocorrência mais recente sob duplicatas, esgotamento atômico de tripla duplicata, remoção com ID de 50 caracteres, retorno de `false` para ausentes, resiliência a SQL injection. |
 | **Nível 2 (Integração)** | `BolsaPersistidaIT` | 3 testes | Comprovação durável de exclusão pós-reinício (`deveManterRemocaoAposReinicioContexto`): encerra contexto Spring, abre novo contexto e atesta que a ocorrência deletada não reaparece, que duplicatas anteriores permanecem intactas e que a remoção total persiste em novos contextos. |
-| **Nível 3 (Aceitação)** | `EstoqueControllerIT` | 16 testes (+1) | API REST sob perfil `infra` com PostgreSQL Real: `DELETE /api/estoque/{id}` retornando 200 com envelope, 404 para inexistente, sobrevivência da duplicata anterior, validação de limite ($\le 50$) e preservação de acentuação UTF-8. |
+| **Nível 3 (Aceitação)** | `EstoqueControllerIT` | 17 testes (+2) | API REST sob perfil `infra` com PostgreSQL Real: `DELETE /api/estoque/{id}` retornando 200 com envelope, 404 para inexistente, sobrevivência da duplicata anterior, validação de limites (50 válido vs 51 inválido) e preservação de acentuação UTF-8. |
 
 ---
 
@@ -924,40 +925,33 @@ A implementação foi realizada em incrementos granulares com commits semântico
   - `test_fila.exe`: 31/31 testes aprovados (vazio, enfileiramento, desenfileiramento, reuso, espiar).
   - Zero vazamento de memória e zero alteração de arquivos de código ou teste em C.
 - **Benchmarks Python (SO U1):** **7/7 testes aprovados** (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** **176 testes aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, 0 pulados, tempo ~21.3s).
+- **Suíte Completa Java:** **183 testes aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, 0 pulados, tempo ~22.8s).
 - **Compilação Limpa:** 19/19 classes de teste compiladas sem erros (`.\mvnw.cmd test-compile`).
 
 ---
 
-### 5. Auditoria Adversarial e Blindagem R2 da Etapa 5 (Revisão Adversarial R2)
+### 5. Auditoria Adversarial e Blindagem R2 e R3 da Etapa 5
 
+#### Rodada R2
 Uma segunda rodada adversarial cética e profunda (R2) auditou detalhadamente a implementação de H3, investigando casos de borda, contratos HTTP, idempotência/repetição de exclusão, integridade de encoding e estruturas de dados encadeadas:
+1. Remoção de duplicatas no meio da lista encadeada (`ListaEstoqueTest`).
+2. Preservação de UTF-8 e símbolos na remoção em memória (`ListaEstoqueStorageTest`).
+3. Guarda defensiva de fronteira ($> 50$) em `EstoqueServiceCaracterizacaoTest`.
+4. Blindagem do endpoint DELETE em `EstoqueControllerTest` com UTF-8 e $> 50$.
+5. Paridade de testes em `EstoqueControllerCaracterizacaoTest` e aceitação em `EstoqueControllerIT`.
 
-1. **Remoção de Duplicata no Meio da Lista Encadeada em `ListaEstoqueTest` (T3.1):**
-   - **Diagnóstico:** A verificação existente testava a remoção de duplicatas apenas quando a mais recente estava na cabeça (`cabeca`). O percurso por nós intermediários (`anterior.proximo.dado.getId().equals(id)`) e o religamento de ponteiros (`anterior.proximo = anterior.proximo.proximo`) sob IDs duplicados não possuía asserção específica atestando que a remoção no meio preserva nós anteriores e nós posteriores intactos.
-   - **Correção:** Implementou-se o teste unitário `deveRemoverPorIdDuplicataNoMeioDaLista` em `ListaEstoqueTest`, comprovando que a ocorrência intermediária mais recente é removida e a ocorrência anterior permanece intacta.
-
-2. **Preservação de UTF-8 e Símbolos na Remoção em Memória em `ListaEstoqueStorageTest` (T3.1):**
-   - **Diagnóstico:** Enquanto o adaptador JDBC possuía teste de encoding UTF-8, o adaptador em memória não possuía teste simétrico para remoção de chaves com caracteres acentuados ou símbolos.
-   - **Correção:** Adicionou-se `devePreservarEncodingUtf8ESimbolosAoRemoverEmMemoria` em `ListaEstoqueStorageTest`.
-
-3. **Guarda Defensiva de Fronteira ($\le 50$) em `EstoqueServiceCaracterizacaoTest`:**
-   - **Diagnóstico:** `EstoqueServiceCaracterizacaoTest` exercitava apenas entradas nulas e em branco para `remover` e `removerBolsa`, sem verificar a fronteira superior de 50 caracteres.
-   - **Correção:** Adicionou-se `deveRetornarFalseAoRemoverIdExcedendo50Caracteres`.
-
-4. **Blindagem do Endpoint DELETE em `EstoqueControllerTest`:**
-   - **Diagnóstico:** O controller não possuía testes unitários puros isolados para IDs com acentuação UTF-8 nem para IDs excedendo 50 caracteres no método `remover`.
-   - **Correção:** Implementaram-se `deveRetornar404AoRemoverIdExcedendo50Caracteres` e `devePreservarUtf8ESimbolosAoRemoverBolsa` em `EstoqueControllerTest`.
-
-5. **Paridade em `EstoqueControllerCaracterizacaoTest` e Teste de Aceitação em `EstoqueControllerIT`:**
-   - **Diagnóstico:** Faltava teste HTTP sob o perfil `u1` para ID excedendo 50 caracteres no DELETE, e faltava teste de aceitação de DELETE com acentuação UTF-8 sob perfil `infra` no PostgreSQL Real.
-   - **Correção:** Implementaram-se `deveRetornar404AoRemoverComIdExcedendo50CaracteresSobPerfilU1` em `EstoqueControllerCaracterizacaoTest` e `deveRemoverBolsaComUtf8ESimbolosSobPerfilInfra` em `EstoqueControllerIT`.
+#### Rodada R3 (Refinamento Final Obrigatório)
+Uma terceira rodada adversarial minuciosa consolidou a blindagem de casos de borda e concorrência:
+1. **Fronteira Positiva de 50 Caracteres:** Comprovação de que IDs com exatamente 50 caracteres (limite do `VARCHAR(50)`) são aceitos com sucesso em todos os níveis (`ListaEstoqueStorageTest`, `JdbcEstoqueStorageTest`, `EstoqueServiceTest`, `EstoqueControllerTest`, `EstoqueControllerCaracterizacaoTest`, `JdbcEstoqueStorageIT`, `EstoqueControllerIT`).
+2. **Esgotamento Completo de Cadeia de Duplicatas:** Validação de 3 duplicatas sucessivas sendo removidas passo a passo em ordem LIFO, decrementando o estoque e atestando que a 4ª remoção retorna `false` (memória e PostgreSQL Real).
+3. **Isolamento de Prefixos Comuns:** Comprovação de que a remoção de `BOLSA-001` não afeta chaves com prefixos idênticos (`BOLSA-0010` ou `BOLSA-001-A`).
+4. **Sanitização de Espaços em Limite de Fronteira:** IDs de 50 caracteres com espaços ao redor são validados e sanitizados via `trim()`.
 
 ---
 
 ### 6. Resumo Padronizado de Fechamento da Etapa 5 (Protocolo Obrigatório)
 
-- **Etapa e estado:** Etapa 5 (E2: H3 — Remoção Persistente) — **Concluída e Auditada (Revisão Adversarial R2 - Fechamento Definitivo)**.
+- **Etapa e estado:** Etapa 5 (E2: H3 — Remoção Persistente) — **Concluída e Auditada (Revisão Adversarial R3 - Fechamento Definitivo)**.
 - **Mudanças:** 
   - Implementação do método `removerPorId(String id)` em `JdbcEstoqueStorage` sob perfil `infra` com anotação `@Transactional`, executando comando SQL `DELETE FROM bolsas WHERE id_seq = (SELECT id_seq FROM bolsas WHERE id = ? ORDER BY id_seq DESC LIMIT 1)`, retornando `true` quando `rowsAffected > 0` e `false` quando ausente ou vazio.
   - Garantia de que a deleção remove exclusivamente a ocorrência de maior `id_seq` (mais recente / LIFO), preservando intactas quaisquer ocorrências anteriores cadastradas sob o mesmo identificador de negócio.
@@ -965,10 +959,10 @@ Uma segunda rodada adversarial cética e profunda (R2) auditou detalhadamente a 
   - Adição de `removerPorId(String id)` em `ListaEstoque` (AED U1) e delegação explícita em `ListaEstoqueStorage` para `listaEstoque.removerPorId(id.trim())` (T3.1).
   - Adição de `removerBolsa(String id)` como alias de negócio em `EstoqueService` delegando para `remover(id)`.
   - Integração efetiva de `removerBolsa(id.trim())` no endpoint `DELETE /api/estoque/{id}` de `EstoqueController` (T3.3), retornando status HTTP 200 com envelope JSON `{"mensagem": "Bolsa removida", "tamanho": N}` para sucesso e HTTP 404 Not Found para bolsa inexistente ou esgotada.
-  - Expansão adversarial de testes com cobertura de remoção de duplicatas no meio da lista encadeada, preservação de UTF-8 e símbolos em memória, controller e aceitação com Postgres, e limites de fronteira de 50 caracteres.
+  - Expansão adversarial de testes com cobertura de remoção de duplicatas no meio da lista encadeada, preservação de UTF-8 e símbolos em memória, controller e aceitação com Postgres, limites de fronteira de 50 caracteres, tripla duplicata e isolamento de prefixos comuns.
   - Bateria completa de testes em 3 níveis (unitário, integração e aceitação), incluindo teste de persistência durável da exclusão após encerramento e recriação do contexto Spring (`BolsaPersistidaIT.deveManterRemocaoAposReinicioContexto`).
 - **Verificação:** 
-  - 176/176 testes Java aprovados via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~21.3s).
+  - **183/183 testes Java aprovados** via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros, tempo ~22.8s).
   - 19/19 classes de testes compiladas sem falhas via `.\mvnw.cmd test-compile`.
   - Sequência rastreável Red → Green comprovada no Git através dos commits semânticos (`test:`, `feat:`, `fix:`).
   - 54/54 testes em C aprovados (23 na lista e 31 na fila da U1).
