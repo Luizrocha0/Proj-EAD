@@ -23,8 +23,13 @@ public class EstoqueService {
         this(new ListaEstoqueStorage());
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public EstoqueService(EstoqueStorage storage) {
         this.storage = Objects.requireNonNull(storage, "storage não pode ser nulo");
+    }
+
+    public EstoqueStorage getStorage() {
+        return this.storage;
     }
 
     /**
