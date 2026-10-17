@@ -207,4 +207,38 @@ class JdbcEstoqueStorageTest {
                 eq(doadorMalicioso)
         );
     }
+
+    @Test
+    @DisplayName("Adversarial: Deve retornar Optional vazio para ID com mais de 50 caracteres sem consultar JDBC")
+    void deveRetornarVazioParaIdExcedendo50CaracteresSemChamarJdbc() {
+        String idGigante = "A".repeat(51);
+        Optional<Bolsa> resultado = storage.buscarPorId(idGigante);
+        assertTrue(resultado.isEmpty());
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    @DisplayName("Adversarial: Deve garantir consulta LIFO atômica com ORDER BY id_seq DESC LIMIT 1 mesmo para chamadas repetidas")
+    void deveGarantirConsultaLifoComClausulaSqlExplicita() {
+        String idChave = "BOLSA-REPETIDA";
+        Bolsa bolsaMaisRecente = criarBolsa(idChave, "AB+", 480.0, "Doador Recente");
+
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(idChave)))
+                .thenReturn(List.of(bolsaMaisRecente));
+
+        Optional<Bolsa> r1 = storage.buscarPorId(idChave);
+        Optional<Bolsa> r2 = storage.buscarPorId(idChave);
+
+        assertTrue(r1.isPresent());
+        assertTrue(r2.isPresent());
+        assertEquals("Doador Recente", r1.get().getDoador());
+        assertEquals("Doador Recente", r2.get().getDoador());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, times(2)).query(sqlCaptor.capture(), any(RowMapper.class), eq(idChave));
+        for (String sql : sqlCaptor.getAllValues()) {
+            assertTrue(sql.contains("ORDER BY id_seq DESC"), "A query deve conter ORDER BY id_seq DESC");
+            assertTrue(sql.contains("LIMIT 1"), "A query deve conter LIMIT 1");
+        }
+    }
 }

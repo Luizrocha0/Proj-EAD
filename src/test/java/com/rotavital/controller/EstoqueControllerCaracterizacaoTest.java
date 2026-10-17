@@ -264,4 +264,46 @@ class EstoqueControllerCaracterizacaoTest {
                 .andExpect(jsonPath("$.id", is("BOLSA_UTF8-01")))
                 .andExpect(jsonPath("$.doador", is("José da Conceição Araújo & Cia")));
     }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 se id exceder 50 caracteres")
+    void deveRetornar400SeIdExceder50Caracteres() throws Exception {
+        String jsonIdLongo = """
+            {
+                "id": "%s",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "João Silva"
+            }
+            """.formatted("B".repeat(51));
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonIdLongo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("id não pode exceder 50 caracteres")));
+    }
+
+    @Test
+    @DisplayName("Adversarial: POST /api/estoque deve retornar 400 se doador exceder 255 caracteres")
+    void deveRetornar400SeDoadorExceder255Caracteres() throws Exception {
+        String jsonDoadorLongo = """
+            {
+                "id": "BOLSA-VALIDA",
+                "tipoSanguineo": "O+",
+                "volumeMl": 450.0,
+                "dataColeta": "2026-09-01",
+                "validade": "2026-11-01",
+                "doador": "%s"
+            }
+            """.formatted("D".repeat(256));
+
+        mockMvc.perform(post("/api/estoque")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonDoadorLongo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem", containsString("doador não pode exceder 255 caracteres")));
+    }
 }
