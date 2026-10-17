@@ -1,6 +1,7 @@
 package com.rotavital.controller;
 
 import com.rotavital.domain.Bolsa;
+import com.rotavital.dto.BolsaRequestDTO;
 import com.rotavital.service.EstoqueService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,15 +29,8 @@ public class EstoqueController {
      * Body JSON: { "id", "tipoSanguineo", "volumeMl", "dataColeta", "validade", "doador" }
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> adicionar(@RequestBody Map<String, String> body) {
-        Bolsa bolsa = new Bolsa(
-                body.get("id"),
-                body.get("tipoSanguineo"),
-                Double.parseDouble(body.getOrDefault("volumeMl", "450.0")),
-                LocalDate.parse(body.get("dataColeta")),
-                LocalDate.parse(body.get("validade")),
-                body.get("doador")
-        );
+    public ResponseEntity<Map<String, Object>> adicionar(@RequestBody BolsaRequestDTO body) {
+        Bolsa bolsa = body.toDomain();
         estoqueService.adicionar(bolsa);
         return ResponseEntity.ok(Map.of(
                 "mensagem", "Bolsa adicionada ao estoque",
