@@ -16,19 +16,63 @@ public record BolsaRequestDTO(
     String doador
 ) {
     public Bolsa toDomain() {
+        Objects.requireNonNull(id, "id não pode ser nulo");
+        String idLimpo = id.trim();
+        if (idLimpo.isEmpty()) {
+            throw new IllegalArgumentException("id não pode ser vazio");
+        }
+
+        Objects.requireNonNull(tipoSanguineo, "tipoSanguineo não pode ser nulo");
+        String tipoNormalizado = tipoSanguineo.replaceAll("\\s+", "").toUpperCase();
+        if (tipoNormalizado.isEmpty()) {
+            throw new IllegalArgumentException("tipoSanguineo não pode ser vazio");
+        }
+
         double volume = 450.0;
         if (volumeMl instanceof Number n) {
             volume = n.doubleValue();
         } else if (volumeMl instanceof String s && !s.isBlank()) {
-            volume = Double.parseDouble(s);
+            try {
+                volume = Double.parseDouble(s.trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("volumeMl inválido: " + s);
+            }
         }
+        if (volume <= 0.0) {
+            throw new IllegalArgumentException("volumeMl deve ser positivo");
+        }
+
+        Objects.requireNonNull(dataColeta, "dataColeta não pode ser nula");
+        String dataColetaLimpa = dataColeta.trim();
+        if (dataColetaLimpa.isEmpty()) {
+            throw new IllegalArgumentException("dataColeta não pode ser vazia");
+        }
+        LocalDate dataColetaParsed = LocalDate.parse(dataColetaLimpa);
+
+        Objects.requireNonNull(validade, "validade não pode ser nula");
+        String validadeLimpa = validade.trim();
+        if (validadeLimpa.isEmpty()) {
+            throw new IllegalArgumentException("validade não pode ser vazia");
+        }
+        LocalDate validadeParsed = LocalDate.parse(validadeLimpa);
+
+        if (validadeParsed.isBefore(dataColetaParsed)) {
+            throw new IllegalArgumentException("validade não pode ser anterior à data de coleta");
+        }
+
+        Objects.requireNonNull(doador, "doador não pode ser nulo");
+        String doadorLimpo = doador.trim();
+        if (doadorLimpo.isEmpty()) {
+            throw new IllegalArgumentException("doador não pode ser vazio");
+        }
+
         return new Bolsa(
-            Objects.requireNonNull(id, "id não pode ser nulo"),
-            Objects.requireNonNull(tipoSanguineo, "tipoSanguineo não pode ser nulo"),
+            idLimpo,
+            tipoNormalizado,
             volume,
-            LocalDate.parse(Objects.requireNonNull(dataColeta, "dataColeta não pode ser nula")),
-            LocalDate.parse(Objects.requireNonNull(validade, "validade não pode ser nula")),
-            Objects.requireNonNull(doador, "doador não pode ser nulo")
+            dataColetaParsed,
+            validadeParsed,
+            doadorLimpo
         );
     }
 }

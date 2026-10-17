@@ -541,31 +541,44 @@ A matriz rastreável de H1 foi plenamente coberta e implementada em 3 níveis:
      - `deveRetornar404ParaBolsaInexistente()`: executa `GET /api/estoque/BOLSA-INEXISTENTE` sob o perfil `infra` e valida retorno HTTP 404 Not Found.
 - **Commit:** `2d0be08`.
 
+### 4. Auditoria Adversarial e Blindagem de Casos de Borda (Revisão R1)
+
+Uma auditoria adversarial e cética foi executada sobre a implementação inicial da Etapa 3, identificando vulnerabilidades de robustez em dados de entrada e salvaguardas de nulidade:
+1. **Tipos Sanguíneos com Espaços ou Minúsculas:** O DTO aceitava entradas sujas como `"  ab+  "` ou `"o-"` sem higienização, gravando valores não canônicos. Foi implementada normalização automática (`replaceAll("\\s+", "").toUpperCase()`) garantindo conformidade com RN1.1 (`"AB+"`, `"O-"`).
+2. **Campos Obrigatórios Vazios ou em Branco:** Strings vazias ou formadas apenas por espaços (`""`, `"   "`) passavam pela checagem ingênua de `Objects.requireNonNull`, permitindo cadastros de bolsas sem identificador legível ou sem doador. Foi introduzida validação estrita com `IllegalArgumentException`.
+3. **Validação de Volume e Consistência Temporal de Datas:** Volumes negativos ou zerados eram aceitos; strings não-numéricas geravam `NumberFormatException` não tratada; e datas com espaços periféricos quebravam no parser. Foi adicionada validação para volume estritamente positivo, tratamento seguro de coerção e parsing com `.trim()`, além de rejeição temporal caso `validade` seja anterior a `dataColeta`.
+4. **Resiliência HTTP no Controller:** Em vez de propagar falhas de validação como HTTP 500 (Server Error), `EstoqueController.adicionar` agora captura exceções de dados inválidos (`IllegalArgumentException`, `DateTimeParseException`, `NullPointerException`) e responde adequadamente com **HTTP 400 Bad Request**.
+5. **Salvaguarda contra Nulos e IDs em Branco nos Storages e Service:** Inserção de `bolsa == null` em `ListaEstoqueStorage` causava corrupção de memória na lista encadeada da U1. Foi implementado fail-fast preventivo com `Objects.requireNonNull` em `salvar()` e retorno idempotente de `Optional.empty()` para buscas com ID nulo ou em branco sem invocar queries SQL desnecessárias no `JdbcTemplate`.
+6. **Mapeamento Seguro de Datas no ResultSet:** Em `JdbcEstoqueStorage`, verificação prévia de `rs.getDate(...) != null` antes da conversão para `LocalDate`.
+
+- **Testes Adversariais Adicionados:** 24 novos cenários de testes unitários e de caracterização cobrindo exaustivamente todas as condições de borda, elevando a suíte para **105 testes Java aprovados com 100% de sucesso**.
+
 ---
 
-### 4. Validação de Não-Regressão da U1
+### 5. Validação de Não-Regressão da U1
 
 - **Testes em C (AED):** 54/54 asserções aprovadas via compilação GCC local (23 em `test_lista` e 31 em `test_fila`), com zero vazamento de memória.
 - **Benchmarks Python:** 7/7 testes aprovados (`python -m unittest discover -s bench`) e consistência estatística de 8 configurações confirmada (`python bench/plot_speedup.py --check`).
-- **Suíte Completa Java:** 81 testes aprovados (`mvnw.cmd test`, tempo ~17s, 0 falhas, 0 erros).
+- **Suíte Completa Java:** **105 testes aprovados** (`mvnw.cmd test`, tempo ~18s, 0 falhas, 0 erros).
 
 ---
 
-### 5. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
+### 6. Resumo Padronizado de Fechamento da Etapa 3 (Protocolo Obrigatório)
 
-- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída**.
+- **Etapa e estado:** Etapa 3 (E2: H1 — Cadastro e Recuperação Persistente) — **Concluída e Blindada**.
 - **Mudanças:** 
   - Criação da interface `EstoqueStorage` desacoplando a camada de serviço do meio físico de armazenamento.
   - Implementação do adaptador de memória `ListaEstoqueStorage` com anotações `@Component` e `@Profile({"u1", "default"})`, delegando diretamente para a lista simplesmente encadeada pedagógica com nós `NoBolsa`.
   - Implementação do adaptador relacional `JdbcEstoqueStorage` sob `@Profile("infra")` utilizando Spring `JdbcTemplate`, transações isoladas (`@Transactional`), mapeamento via `RowMapper<Bolsa>`, consulta LIFO da ocorrência mais recente (`ORDER BY id_seq DESC LIMIT 1`) e fail-fast em falhas de persistência.
   - Refatoração de `EstoqueService` para injetar `EstoqueStorage` via construtor, eliminando o acoplamento rígido com `ListaEstoque`.
-  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0) e integração no `POST /api/estoque` do `EstoqueController`.
+  - Criação do record `BolsaRequestDTO` tolerante a variações de tipos (`Double`, `String` ou ausente com default 450.0), com normalização de tipos sanguíneos (`AB+`, `O+`), validação de campos vazios/em branco, volume positivo e consistência temporal de validade.
+  - Tratamento resiliente de validações em `EstoqueController` respondendo com HTTP 400 Bad Request.
   - Configuração de `<argLine>-Dnet.bytebuddy.experimental=true</argLine>` no `pom.xml` para compatibilidade total do Mockito com o runtime Java 25.
-  - Criação de 13 testes de caracterização da U1, 20 testes unitários TDD e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
+  - Suíte expandida com 13 testes de caracterização legados, 44 testes unitários TDD/adversariais e 3 baterias de integração/aceitação com Testcontainers (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).
   - As histórias H2 (listagem de estoque) e H3 (remoção persistente) foram expressamente mantidas pendentes para as Etapas 4 e 5.
 - **Verificação:** 
-  - 81/81 testes Java unitários e de caracterização aprovados no perfil `u1` via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
-  - 10 commits rastreáveis registrando estritamente a sequência `test:` e `feat:` no histórico Git.
+  - 105/105 testes Java unitários e de caracterização aprovados no perfil `u1` via `.\mvnw.cmd test` (Surefire, 0 falhas, 0 erros).
+  - Commits rastreáveis registrando estritamente a sequência `test:` e `feat:` no histórico Git.
   - Evidências Red confirmadas com falha técnica legítima (`UnsupportedOperationException` e `Wanted but not invoked`) antes de cada implementação Green.
   - 54/54 asserções de testes em C aprovadas (lista encadeada e fila FIFO).
   - 7/7 testes de benchmarks em Python aprovados e integridade estatística validada via `--check`.
@@ -574,6 +587,7 @@ A matriz rastreável de H1 foi plenamente coberta e implementada em 3 níveis:
   - A execução física dos testes de integração `*IT.java` no ambiente host Windows depende do daemon Docker Desktop estar ativo; na esteira CI (Linux) os testes executarão nativamente com Docker.
   - A listagem geral persistente do estoque (H2) e a remoção persistente (H3) permanecem expressamente pendentes para as Etapas 4 e 5.
 - **Próxima etapa:** **Etapa 4 — E2: H2 — Listagem e Consulta Persistente (TDD)** (implementação guiada por TDD da listagem persistente, envelope padronizado, suporte a estoque vazio, ordenação temporal LIFO e recuperação de duplicatas no PostgreSQL).
+
 
 
 
