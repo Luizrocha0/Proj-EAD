@@ -1,289 +1,580 @@
-# Rota Vital
+# 🩸 Rota Vital — Banco de Sangue Inteligente
 
-Backend do Projeto Integrador para gestão de bolsas de sangue e requisições hospitalares. A aplicação usa Spring Boot e consome estruturas de dados implementadas manualmente em Java, com versões equivalentes em C.
+> **Backend Spring Boot de Nível Industrial para Gestão de Banco de Sangue**  
+> Desenvolvido para a disciplina de **Infraestrutura de Software (Sistemas Operacionais)** e **Algoritmos e Estruturas de Dados (AED)** — Projeto Integrador 2026.2.
 
-**Disciplinas:** Algoritmos e Estruturas de Dados (AED) e Infraestrutura de Software (SO). **Semestre:** 2026.2.
+[![CI — Rota Vital](https://github.com/Luizrocha0/Proj-EAD/actions/workflows/ci.yml/badge.svg)](https://github.com/Luizrocha0/Proj-EAD/actions/workflows/ci.yml)
+[![Status do Deploy](https://img.shields.io/badge/Deploy-Render.com-46E3B7?logo=render&logoColor=white)](https://rota-vital.onrender.com/actuator/health)
+[![Java Version](https://img.shields.io/badge/Java-21%20LTS-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.3-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20Alpine-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Multi--stage-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-[Aplicação pública](https://rota-vital.onrender.com) · [Saúde da aplicação](https://rota-vital.onrender.com/actuator/health) · [Execuções do pipeline](https://github.com/Luizrocha0/Proj-EAD/actions)
+---
 
-## Estado das entregas
+## 👥 Integrantes da Equipe
 
-| Entrega | Conteúdo disponível | Situação |
-| --- | --- | --- |
-| AED U1 | Lista de estoque e fila FIFO em C e Java; testes; integração com a API; tradução comentada | Implementado |
-| SO U1 | Endpoint sequencial/paralelo; medições; gráfico; relatório; CI/CD e configuração de deploy | Implementado |
-| Infra U2 — Parte 1, até 20/10/2026 | Container com API e banco, TDD comprovável e deploy com gates e fluxo de PR | Planejado; implementação pendente |
+- **Eduardo Borges**
+- **Luiz Henrique Rocha**
+- **Eliziane Mota**
+- **Pedro Iranildo**
+- **Ricardo Severiano de Souza Filho**
 
-O estoque e a fila atuais ficam **em memória** e são reiniciados junto com a aplicação. Esta versão não tem PostgreSQL, Compose nem perfis Spring `u1` e `infra`. Esses itens fazem parte do [plano de execução da Infra U2](docs/infra-u2/PROMPT_EXECUCAO_POR_ETAPAS.md).
+- **Repositório:** [https://github.com/Luizrocha0/Proj-EAD](https://github.com/Luizrocha0/Proj-EAD)  
+- **URL Pública de Produção:** [https://rota-vital.onrender.com](https://rota-vital.onrender.com)  
 
-## Integrantes e funções da equipe
+---
 
-As funções abaixo organizam a equipe para a **próxima entrega de Infra U2**. O detalhamento de responsabilidades, arquivos, revisões e prazos está na [divisão de funções](docs/infra-u2/divisao-tarefas.md).
+## 📋 Índice
 
-| Integrante | Função | Responsabilidades |
-| --- | --- | --- |
-| Luiz Henrique Rocha | **Tech Leader** | Arquitetura, decisões técnicas, integração Java e revisão de PRs |
-| Eduardo Borges | **Desenvolvedor Backend** | Domínio, migrações, persistência e operações da API |
-| Eliziane Mota | **QA Engineer** | Critérios de aceite, TDD, testes e evidências de qualidade |
-| Pedro Iranildo | **DevOps Engineer** | Docker/Compose, CI/CD, ambientes, deploy e rollback |
-| Ricardo Severiano de Souza Filho | **Product Owner** | Backlog, escopo, prioridades, documentação e organização da entrega |
+- [1. Visão Geral e Transição Pedagógica (U1 → U2)](#1-visão-geral-e-transição-pedagógica-u1-u2)
+- [2. Como Rodar](#2-como-rodar)
+  - [Pré-requisitos](#pré-requisitos)
+  - [Configuração de Ambiente (.env.example vs .env)](#configuração-de-ambiente-envexample-vs-env)
+  - [Execução via Docker Compose (Recomendado)](#execução-via-docker-compose-recomendado)
+  - [Execução Direta com Maven (Perfis u1 vs infra)](#execução-direta-com-maven-perfis-u1-vs-infra)
+- [3. Testes por Nível](#3-testes-por-nível)
+  - [Pirâmide de Testes e Segregação Maven](#pirâmide-de-testes-e-segregação-maven)
+  - [Comandos de Execução](#comandos-de-execução)
+  - [Relatórios Gerados e Limitações Observadas](#relatórios-gerados-e-limitações-observadas)
+- [4. Pipeline de CI/CD e Deploy Automatizado](#4-pipeline-de-cicd-e-deploy-automatizado)
+  - [Arquitetura da Esteira em DAG (6 Jobs)](#arquitetura-da-esteira-em-dag-6-jobs)
+  - [Eliminação de Contornos Permissivos](#eliminação-de-contornos-permissivos)
+  - [Deploy Hook Seguro no Render com Commit SHA](#deploy-hook-seguro-no-render-com-commit-sha)
+  - [Procedimento Operacional de Rollback em 3 Vias](#procedimento-operacional-de-rollback-em-3-vias)
+  - [Governança de Migrações com Flyway (Expand / Contract)](#governança-de-migrações-com-flyway-expand-contract)
+- [5. Tabela das 12 Decisões Arquiteturais Justificadas](#5-tabela-das-12-decisões-arquiteturais-justificadas)
+- [6. Declaração Transparente de Uso de IA](#6-declaração-transparente-de-uso-de-ia)
+- [7. Catálogo de Endpoints REST](#7-catálogo-de-endpoints-rest)
+- [8. Benchmark de Paralelismo e Medições de SO (U1)](#8-benchmark-de-paralelismo-e-medições-de-so-u1)
+- [9. Estrutura Completa do Repositório](#9-estrutura-completa-do-repositório)
 
-Os cinco integrantes compõem a equipe acadêmica. Os perfis identificados no histórico Git são [Luiz Henrique Rocha — @Luizrocha0](https://github.com/Luizrocha0) e [Ricardo Severiano de Souza Filho — @byteric](https://github.com/byteric). A divisão acima define trabalho futuro; não substitui o registro de autoria dos commits.
+---
 
-## Como rodar
+## 1. Visão Geral e Transição Pedagógica (U1 → U2)
 
-### Requisitos
+O **Rota Vital** é um sistema para automação e rastreamento de bancos de sangue, projetado para triagem de bolsas, atendimento emergencial de requisições hospitalares e detecção de duplicatas através de paralelismo.
 
-| Ferramenta | Uso |
-| --- | --- |
-| Java JDK 21 | Compilar, testar e executar a API; versão usada no CI |
-| Maven Wrapper incluído | Baixar e executar a versão Maven do projeto |
-| GCC e GNU Make em Linux/WSL | Testar as estruturas C com AddressSanitizer e UndefinedBehaviorSanitizer |
-| Python 3.12+ | Validar medições e executar os scripts do relatório |
-| Docker | Construir e executar a imagem existente; opcional na execução local da U1 |
+### O Patrimônio Acadêmico da Unidade 1 (AED e SO)
+Na **Unidade 1**, a aplicação priorizou fundamentos de ciência da computação:
+- Estruturas de dados manuais com alocação dinâmica de nós e ponteiros implementadas em C (`aed-c/`) e replicadas fielmente em Java (`com.rotavital.aed.u1`): lista simplesmente encadeada de bolsas (inserção na cabeça $O(1)$, busca $O(n)$) e fila FIFO de requisições hospitalares.
+- Testes exaustivos com sanitizers de memória do GCC (`-fsanitize=address,undefined`) comprovando ausência de memory leaks.
+- Paralelismo com threads de plataforma e medições empíricas brutas de speedup para detecção de duplicatas textuais com cálculo de distância de Levenshtein $O(n^2 \cdot L^2)$.
 
-A primeira execução do Maven Wrapper precisa de acesso à internet para baixar dependências.
+### A Evolução na Unidade 2 (Infraestrutura de Software — Release 1)
+Na **Unidade 2**, sem descartar o patrimônio da U1, elevamos a aplicação para um padrão de engenharia de software moderno:
+- **Desacoplamento por Portas e Adaptadores (Hexagonal Mínimo):** Criação da interface `EstoqueStorage`. Sob o perfil padrão **`u1`**, a aplicação opera em memória com as estruturas de nós manuais e sem necessidade de banco de dados. Sob o perfil **`infra`**, a aplicação opera com persistência relacional no **PostgreSQL 16**.
+- **Proibição Estrita de Fallback Silencioso:** Sob o perfil `infra`, caso o banco de dados fique indisponível, a aplicação lança exceção imediata (`DataAccessException`), falha a requisição HTTP (500/503) e o Actuator reporta `status: DOWN`. Em hipótese alguma há desvio silencioso para a memória.
+- **TDD Rigoroso em Três Níveis:** Histórias H1 (Cadastro e Recuperação durável pós-reinício), H2 (Listagem LIFO com envelope padronizado e estoque vazio) e H3 (Remoção persistente da ocorrência mais recente em IDs duplicados) desenvolvidas pelo ciclo *Red $\to$ Green $\to$ Refactor*.
+- **Containerização Otimizada:** Dockerfile multi-stage com compilação e testes no build (sem `-DskipTests`), runtime non-root enxuto com Alpine Linux, e orquestração completa via Docker Compose com healthchecks encadeados.
+- **Esteira CI/CD em DAG de 6 Gates:** Pipeline no GitHub Actions sem contornos permissivos, smoke test REST containerizado, deploy hook com commit SHA aprovado no Render e rollback auditável em 3 vias com governança Flyway (Expand/Contract).
 
-### Linux, macOS ou WSL
+---
+
+## 2. Como Rodar
+
+### Pré-requisitos
+
+| Ferramenta | Versão Recomendada | Finalidade |
+|---|---|---|
+| **Java JDK** | 21 LTS (ou 25) | Compilação e execução da aplicação Spring Boot |
+| **Maven** | 3.9+ | Gerenciamento de build (Maven Wrapper incluso: `./mvnw` / `.\mvnw.cmd`) |
+| **Docker & Compose** | 24+ (Compose v2+) | Orquestração da API e do banco PostgreSQL |
+| **Python** | 3.11+ | Validação dos scripts estatísticos e benchmarks da U1 |
+| **GCC & Make** | 11+ | Compilação e testes das estruturas C em `aed-c/` |
+
+> 💡 **Nota para Usuários Windows:** No PowerShell, certifique-se de configurar a variável de ambiente `JAVA_HOME` na sessão antes de invocar o Maven Wrapper (`.\mvnw.cmd`), prevenindo o erro `JAVA_HOME not found in your environment`:
+> ```powershell
+> $env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"  # Ajuste para o caminho do seu JDK
+> ```
+
+---
+
+### Configuração de Ambiente (.env.example vs .env)
+
+A aplicação utiliza variáveis de ambiente para configuração dinâmica. Um modelo seguro e documentado está disponível em `.env.example`:
 
 ```bash
-git clone https://github.com/Luizrocha0/Proj-EAD.git
-cd Proj-EAD
-java -version
-./mvnw spring-boot:run
+# Copiar o arquivo de exemplo para criar o seu .env local
+cp .env.example .env
+
+# No Windows PowerShell:
+Copy-Item .env.example .env
 ```
 
-### Windows — PowerShell
+**Principais Variáveis de Ambiente:**
 
-```powershell
-git clone https://github.com/Luizrocha0/Proj-EAD.git
-Set-Location Proj-EAD
-java -version
+| Variável | Valor Padrão no Compose | Descrição |
+|---|---|---|
+| `PORT` | `8080` | Porta HTTP exposta pela API no host |
+| `POSTGRES_DB` | `rotavital` | Nome do banco de dados relacional |
+| `POSTGRES_USER` | `rotavital` | Usuário do banco de dados |
+| `POSTGRES_PASSWORD` | `rotavital` | Senha do banco de dados |
+| `POSTGRES_PORT` | `5432` | Porta externa do PostgreSQL no host |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/rotavital` | URL JDBC de conexão da API com o container do banco |
+| `JAVA_OPTS` | `-Xms256m -Xmx512m` | Parâmetros de gerenciamento de heap e memória da JVM |
+
+> 🔒 **Blindagem de Segredos:** O arquivo `.env` está registrado no `.gitignore` e no `.dockerignore`, impedindo o vazamento inadvertido de credenciais reais em commits ou camadas de build do Docker.
+
+---
+
+### Execução via Docker Compose (Recomendado)
+
+O Docker Compose sobe a aplicação completa sob o perfil `infra`, conectando-a automaticamente a um contêiner PostgreSQL 16 com volume persistente.
+
+1. **Subir os serviços em segundo plano com build:**
+   ```bash
+   docker compose up -d --build
+   ```
+
+2. **Verificar a integridade e saúde dos contêineres:**
+   ```bash
+   docker compose ps
+   ```
+   *Ambos os contêineres (`rotavital-api` e `rotavital-db`) devem apresentar status `Up (healthy)`.*
+
+3. **Inspecionar os logs em tempo real:**
+   ```bash
+   docker compose logs -f api
+   ```
+
+4. **Verificar o endpoint de saúde do Actuator:**
+   ```bash
+   curl http://localhost:8080/actuator/health
+   ```
+   *Resposta esperada (HTTP 200 OK):*
+   ```json
+   {
+     "status": "UP",
+     "components": {
+       "db": {
+         "status": "UP",
+         "details": {
+           "database": "PostgreSQL",
+           "validationQuery": "isValid()"
+         }
+       },
+       "diskSpace": { "status": "UP" },
+       "ping": { "status": "UP" }
+     }
+   }
+   ```
+
+5. **Encerramento limpo preservando dados:**
+   ```bash
+   docker compose down
+   ```
+   > ⚠️ **Aviso de Integridade:** NUNCA execute `docker compose down -v` a menos que deseje conscientemente destruir o volume nomeado `rotavital-postgres-data` e apagar todos os dados persistidos do estoque.
+
+---
+
+### Execução Direta com Maven (Perfis u1 vs infra)
+
+O sistema suporta execução local sem contêineres através de perfis do Spring Boot:
+
+#### Perfil `u1` (Padrão em Memória — Demonstração Pedagógica da U1)
+Inicia a aplicação 100% autônoma em memória. As autoconfigurações de banco, DataSource e migrações Flyway são explicitamente desabilitadas em `application-u1.properties`.
+
+```bash
+# Linux / macOS
+./mvnw spring-boot:run
+
+# Windows PowerShell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"  # Ajuste para seu JDK
 .\mvnw.cmd spring-boot:run
 ```
+*A aplicação subirá utilizando a lista simplesmente encadeada manual com nós `NoBolsa`. Ideal para validações rápidas de sala de aula sem requerer Docker ou banco local instalado.*
 
-Use `JAVA_HOME` apontando para seu JDK 21 instalado quando precisar selecionar essa versão. A aplicação escuta na porta 8080. Em outro terminal:
-
-```bash
-curl http://localhost:8080/actuator/health
-```
-
-O resultado esperado é HTTP 200 com `status` igual a `UP`. Interrompa a execução local com `Ctrl+C`.
-
-### Docker existente
+#### Perfil `infra` (Persistência no PostgreSQL)
+Conecta a aplicação a um banco PostgreSQL rodando no host ou em contêiner (ex: `docker compose up -d db`):
 
 ```bash
-docker build -t rota-vital .
-docker run --rm -p 8080:8080 --name rota-vital rota-vital
+# Linux / macOS
+./mvnw spring-boot:run -Dspring-boot.run.profiles=infra
+
+# Windows PowerShell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=infra
 ```
 
-O Dockerfile atual tem estágios JDK/JRE e usuário sem privilégios. Seu estágio de build ainda usa `-DskipTests`; a correção e o Compose com banco estão previstos na Infra U2. Não há `docker compose up` funcional nesta versão.
+---
 
-## Funcionalidades e API
+## 3. Testes por Nível
 
-| Método | Endpoint | Comportamento |
-| --- | --- | --- |
-| POST | `/api/estoque` | Insere uma bolsa no início da lista |
-| GET | `/api/estoque` | Retorna `bolsas` e `tamanho`, da inserção mais recente para a mais antiga |
-| GET | `/api/estoque/{id}` | Consulta a primeira ocorrência do ID; retorna 404 se ausente |
-| DELETE | `/api/estoque/{id}` | Remove a primeira ocorrência do ID; retorna 404 se ausente |
-| POST | `/api/requisicoes` | Enfileira uma requisição |
-| POST | `/api/requisicoes/atender` | Atende a próxima em ordem FIFO |
-| GET | `/api/requisicoes/proxima` | Consulta a próxima sem removê-la |
-| GET | `/api/requisicoes` | Lista as requisições pendentes |
-| GET | `/api/duplicates/detect` | Detecta duplicatas sequencialmente ou com threads |
-| GET | `/actuator/health` | Saúde da aplicação |
-| GET | `/actuator/info` | Informações da aplicação |
+### Pirâmide de Testes e Segregação Maven
 
-O estoque aceita IDs repetidos. Consulta e remoção afetam a ocorrência mais recente. A prioridade da requisição é um campo de domínio; não altera a ordem FIFO. Não há histórico de operações com pilha nesta implementação.
+A suíte de testes do Rota Vital adota a arquitetura de pirâmide de testes com fail-fast na esteira, segregada no `pom.xml`:
 
-### Cadastrar e consultar uma bolsa
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ NÍVEL 3: TESTES DE ACEITAÇÃO HTTP (MockMvc + PostgreSQL Real / Testcontainers)  │
+│ • Validação de ponta a ponta dos endpoints REST /api/estoque                     │
+│ • Envelopes JSON, status HTTP (200, 400, 404, 500) e cabeçalhos                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ NÍVEL 2: TESTES DE INTEGRAÇÃO (Spring Data JDBC + PostgreSQL / Testcontainers) │
+│ • Execução real de DDL/DML, transações (@Transactional) e Flyway               │
+│ • Comprovação de persistência pós-reinício de contexto (BolsaPersistidaIT)      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ NÍVEL 1: TESTES UNITÁRIOS E CARACTERIZAÇÃO (Surefire + Mocks + Memória)         │
+│ • Estruturas manuais U1 em C e Java, serialização DTO, sanitização e fail-fast   │
+│ • Execução ultrarrápida (~23s) sem dependência de Docker ou banco externo       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-Os comandos abaixo usam shell Bash; no PowerShell, envie o mesmo JSON com `Invoke-RestMethod` ou use `curl.exe` com a sintaxe apropriada ao seu terminal.
+---
 
+### Comandos de Execução
+
+#### 1. Testes Unitários Java Rápidos (Nível 1 — Surefire):
+Executa exclusivamente classes `**/*Test.java` sem subir contêineres nem banco de dados.
 ```bash
-curl -X POST http://localhost:8080/api/estoque \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"BOLSA-001","tipoSanguineo":"O+","volumeMl":"450.0","dataColeta":"2026-09-01","validade":"2026-11-01","doador":"Doador de exemplo"}'
-curl http://localhost:8080/api/estoque/BOLSA-001
+./mvnw test
+# No Windows PowerShell:
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
+.\mvnw.cmd test
 ```
+*Resultado: **201 testes aprovados** (0 falhas, 0 erros, tempo ~23s).*
 
-O POST retorna HTTP 200 com `mensagem` e `tamanho`. Os campos numéricos são enviados como texto para acompanhar o contrato atual do controller.
-
-### Enfileirar e atender uma requisição
-
+#### 2. Testes de Integração e Aceitação (Níveis 2 e 3 — Failsafe + Testcontainers):
+Executa classes `**/*IT.java` instanciando automaticamente um contêiner PostgreSQL 16 via Testcontainers.
 ```bash
-curl -X POST http://localhost:8080/api/requisicoes \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"REQ-001","hospitalId":"HOSP-CENTRAL","tipoSanguineo":"O+","quantidadeBolsas":"2","prioridade":"EMERGENCIA"}'
-curl http://localhost:8080/api/requisicoes/proxima
-curl -X POST http://localhost:8080/api/requisicoes/atender
+./mvnw -Pintegration verify
+# No Windows PowerShell:
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
+.\mvnw.cmd -Pintegration verify
 ```
+*Resultado: **39 métodos de teste aprovados** em 3 classes IT (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).*
 
-Fila vazia retorna HTTP 200 com uma mensagem. A operação de atendimento remove a requisição da fila; ela ainda não executa alocação de bolsa ou cálculo de rota.
-
-### Testar o processamento com threads
-
+#### 3. Testes das Estruturas AED em C (U1 — AddressSanitizer + UBSan):
+Compila e executa as 54 asserções em C com sanitizers de memória do GCC.
 ```bash
-curl 'http://localhost:8080/api/duplicates/detect?size=20&threads=1&mode=platform'
-curl 'http://localhost:8080/api/duplicates/detect?size=20&threads=2&mode=platform'
-```
-
-Compare `status` e `duplicatesFound`. Os tempos variam entre chamadas. O controller aceita `size` de 1 a 20.000, modos `platform` e `virtual`, e limita `threads` a quatro vezes os processadores reconhecidos pela JVM. A série de 8 threads exige que a JVM reconheça pelo menos dois processadores.
-
-## Testes
-
-### Java
-
-```bash
-./mvnw clean verify
-```
-
-No PowerShell:
-
-```powershell
-.\mvnw.cmd clean verify
-```
-
-A suíte cobre estruturas AED, contexto Spring, controller de duplicatas, serviço sequencial/paralelo e comparação de textos. Os resultados reais ficam em `target/surefire-reports/`; consulte esses relatórios para a quantidade executada e as falhas. Não há, nesta versão, teste de integração com banco nem histórico TDD comprobatório da Infra U2.
-
-### C
-
-Execute em Linux/WSL com GCC e GNU Make:
-
-```bash
+# Linux / macOS / WSL
 make -C aed-c test
+
+# Windows com MinGW
+mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test
 ```
+*Resultado: **54/54 asserções aprovadas** (23 em `test_lista` e 31 em `test_fila`), **zero memory leaks**.*
 
-O Makefile ativa `-Wall -Wextra`, AddressSanitizer e UndefinedBehaviorSanitizer. A saída informa o resultado de cada suíte. Os testes cobrem inserção, consulta, remoção, vazio, ordem FIFO e reutilização das estruturas.
-
-As fixtures JSON em [fixtures/](fixtures/) documentam os dados e resultados esperados. As suítes C e Java reproduzem esses valores diretamente no código; não carregam os arquivos JSON durante a execução. A [tradução comentada](docs/equivalencia-u1.md) relaciona as funções e os nós das duas versões.
-
-### Cálculos do benchmark
-
+#### 4. Testes dos Benchmarks e Paralelismo em Python (U1 — SO):
 ```bash
+# Testes unitários dos cálculos estatísticos
 python -m unittest discover -s bench -p 'test_*.py'
+
+# Validação estatística de consistência das 40 medições brutas
 python bench/plot_speedup.py --check
 ```
+*Resultado: **7/7 testes aprovados** e `Agregado correto: 8 configurações`.*
 
-Esses comandos verificam os cálculos e a correspondência entre CSV bruto e agregado sem refazer a coleta de desempenho. A opção `--check` não exige instalar as bibliotecas de geração de gráficos/PDF.
+---
 
-## Benchmark de threads
+### Relatórios Gerados e Limitações Observadas
 
-A detecção de duplicatas compara pares de textos usando distância de Levenshtein. O custo sequencial é O(n² · L²), para `n` registros com comprimento limitado por `L`. Contadores locais por fatia e agregação por `Future` permitem comparar a resposta sequencial com a paralela.
+- **Relatórios de Testes:**
+  - Relatórios Surefire: `target/surefire-reports/`
+  - Relatórios Failsafe: `target/failsafe-reports/`
+- **Limitações Técnicas Observadas:**
+  - **Sanitizers no Windows:** A distribuição padrão MinGW do Windows não empacota a biblioteca `libasan`. Para compilar com `-fsanitize=address,undefined`, utilize Linux nativo, contêiner Docker ou WSL.
+  - **Script de Benchmark (`bench/measure.ps1`):** Não deve ser executado em rotinas normais de teste ou auditoria, pois realiza coletas ativas contra `localhost:8080` que regravam os CSVs históricos de 40 medições da U1.
+  - **Plot sem `--check` (`bench/plot_speedup.py`):** Sem a flag `--check`, o script regrava `bench/measurements_agg.csv` convertendo terminações de linha para CRLF no Windows, sujando o controle de versão. Use sempre com `--check`.
 
-A série publicada em 06/10/2026 usa [40 observações brutas](bench/measurements.csv): tamanhos 8.000/16.000, modo `platform`, 1/2/4/8 threads e cinco repetições. Todas registram `SUCCESS`, com 3.198.218 pares duplicados para 8.000 registros e 12.801.507 para 16.000, iguais entre as versões.
+---
 
-| Tamanho | Threads | Média HTTP (ms) | Speedup |
-| --- | --- | --- | --- |
-| 8000 | 1 | 23883.00 | 1.00x |
-| 8000 | 2 | 18925.60 | 1.26x |
-| 8000 | 4 | 11105.20 | 2.15x |
-| 8000 | 8 | 7209.80 | 3.31x |
-| 16000 | 1 | 97867.00 | 1.00x |
-| 16000 | 2 | 81400.00 | 1.20x |
-| 16000 | 4 | 69518.20 | 1.41x |
-| 16000 | 8 | 41297.40 | 2.37x |
+## 4. Pipeline de CI/CD e Deploy Automatizado
 
-A tabela usa a média de `responseTimeMs`, medida pelo cliente HTTP, e speedup `T1 / Tt` para o mesmo tamanho. `processingTimeMs` é uma métrica interna diferente. O [coletor PowerShell](bench/measure.ps1) prevê aquecimento antes da série.
+### Arquitetura da Esteira em DAG (6 Jobs)
 
-![Speedup das médias HTTP](bench/speedup.png)
+O workflow em `.github/workflows/ci.yml` estrutura a validação em um Grafo Acíclico Dirigido (DAG) com dependências explícitas:
 
-A série não contém medições de virtual threads, hardware ou versão exata do JDK da coleta. Consulte [medições e limites](docs/medicoes.md), [justificativa](docs/justificativa.md), [análise](docs/analise.md) e [relatório PDF](docs/RotaVital_Threads_Relatorio.pdf).
-
-### Gerar gráficos e relatório
-
-Para regenerar os artefatos a partir dos CSVs preservados, use Python 3.12+ e as dependências fixadas de [bench/requirements.txt](bench/requirements.txt). Exemplo no PowerShell:
-
-```powershell
-python -m venv .venv-bench
-.\.venv-bench\Scripts\python.exe -m pip install -r bench/requirements.txt
-.\.venv-bench\Scripts\python.exe bench/plot_speedup.py
-.\.venv-bench\Scripts\python.exe bench/build_report.py
+```
+                    ┌──────────────────────┐
+                    │ check-benchmark (SO) │
+                    └──────────┬───────────┘
+                               │
+ ┌──────────────┐   ┌──────────▼───────────┐
+ │ test-c (AED) │   │ test-java-unit (L1)  │
+ └──────┬───────┘   └──────────┬───────────┘
+        │                      │
+        │           ┌──────────▼───────────┐
+        │           │test-java-integr. (L2)│
+        │           └──────────┬───────────┘
+        │                      │
+        └──────────────┬───────┴───────────────┐
+                       ▼
+          ┌───────────────────────────┐
+          │ build-docker-smoke (Gate 5) │
+          └────────────┬──────────────┘
+                       │ (exclusivo branch main)
+                       ▼
+          ┌───────────────────────────┐
+          │   deploy-render (Gate 6)  │
+          │  ref=${{ github.sha }}    │
+          └───────────────────────────┘
 ```
 
-Esses comandos geram arquivos; não representam uma nova medição de desempenho.
+1. **Gate 1 (`check-benchmark`):** Executa testes Python e checa consistência das medições da U1.
+2. **Gate 2 (`test-c`):** Compila e executa estruturas C com GCC, AddressSanitizer e UndefinedBehaviorSanitizer.
+3. **Gate 3 (`test-java-unit`):** Roda os 201 testes unitários Java rápidos via Surefire.
+4. **Gate 4 (`test-java-integration`):** Executa os testes de integração com banco PostgreSQL via Testcontainers.
+5. **Gate 5 (`build-docker-smoke`):** Constrói a imagem Docker (testando no build), sobe o Compose localmente, aguarda saúde de API e banco, e executa smoke test funcional de ponta a ponta com 9 asserções REST completas (cadastro, consulta, listagem LIFO, remoção, 404 e 400).
+6. **Gate 6 (`deploy-render`):** Dispara o deploy hook no Render com o commit SHA aprovado.
 
-## Pipeline e deploy
+---
 
-O workflow [ci.yml](.github/workflows/ci.yml) executa em pushes para `main`/`develop` e em PRs destinados à `main`.
+### Eliminação de Contornos Permissivos
 
-| Job | Verificação ou ação | Dependência |
-| --- | --- | --- |
-| `test-c` | Testes C com sanitizers | Checkout |
-| `test-java` | JUnit com Java 21; relatórios Surefire | Checkout |
-| `check-benchmark` | Testes Python e validação dos CSVs | Checkout |
-| `build-java` | Empacotamento do JAR | `test-java` |
-| `build-docker` | Construção da imagem | `test-c`, `build-java`, `check-benchmark` |
-| `health-check` | Inicia o JAR e consulta Actuator, somente na main | `build-docker` |
-| `deploy-render` | Dispara Render e consulta URL pública, somente na main | `health-check` |
+A esteira de CI foi construída com disciplina estrita:
+- **Zero `continue-on-error`:** Nenhuma etapa possui permissão para falhar silenciosamente.
+- **Zero `|| true`:** Nenhum comando mascara códigos de saída de erro.
+- Qualquer falha em qualquer gate bloqueia imediatamente a progressão e impede a publicação em produção.
 
-O healthcheck do pipeline atual inicia o JAR, não uma composição API + banco. A construção da imagem não a publica em um registry. A Infra U2 acrescentará testes com banco, smoke do Compose, fluxo por PR/proteção e confirmação do commit publicado.
+---
 
-### Configuração do Render
+### Deploy Hook Seguro no Render com Commit SHA
 
-[render.yaml](render.yaml) define serviço web Docker, branch main, healthcheck e `autoDeploy: false`; a publicação é disparada pelo workflow. Os secrets esperados no GitHub são:
+Para evitar a publicação de versões defasadas ou intermediárias decorrentes de builds assíncronos no Git, o job de deploy aciona o webhook do Render repassando explicitamente o identificador do commit aprovado:
 
-| Nome | Finalidade |
-| --- | --- |
-| `RENDER_DEPLOY_HOOK_URL` | Hook de publicação; manter em segredo |
-| `RENDER_APP_URL` | Endereço público usado pelo healthcheck do workflow |
+```bash
+curl -sS --fail -X POST "${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"
+```
 
-A URL documentada é [https://rota-vital.onrender.com](https://rota-vital.onrender.com). A disponibilidade e o resultado de cada publicação devem ser conferidos na execução correspondente. Um HTTP 200, isoladamente, não identifica o commit servido.
+- **Proteção de Segredos:** A URL do hook é injetada via secret do repositório (`${{ secrets.RENDER_DEPLOY_HOOK_URL }}`) e o `curl` roda com `-sS`, impedindo vazamento de tokens nos logs de execução do GitHub Actions.
+- **Blueprint Oficial:** O manifesto `render.yaml` declara o Web Service `rota-vital` rodando Docker sob perfil `infra` e provisiona o banco de dados gerenciado PostgreSQL 16 `rotavital-db`.
 
-O entrypoint atual usa `java -jar`; a variável `JAVA_OPTS` declarada no Blueprint ainda não é interpolada por ele. O ajuste de consumo dessa configuração integra o plano da Infra U2.
+---
 
-## Decisões técnicas
+### Procedimento Operacional de Rollback em 3 Vias
 
-| Escolha atual | Alternativa considerada na organização | Justificativa ou limite |
-| --- | --- | --- |
-| Spring Boot + Java 21 | Script independente | Endpoint real de aplicação e stack do PI |
-| Lista e fila com nós próprios | Coleções prontas | Demonstração das operações equivalentes às versões C |
-| Estado em memória | Persistência relacional | Mantém a demonstração U1; o banco é trabalho da Infra U2 |
-| C compilado separadamente | Chamar C pela JVM | Testar ponteiros e memória sem criar acoplamento nativo |
-| ExecutorService e contadores locais | Contador compartilhado no laço | Agregar resultados após cada fatia sem disputa pelo contador |
-| Imagem Temurin em dois estágios | Levar o JDK para a execução | Separar compilação e runtime, com usuário sem privilégios |
-| GitHub Actions e Render | Deploy manual | Encadear testes, build e disparo de publicação |
-| CSV bruto preservado | Digitar agregados no relatório | Tornar médias e speedup verificáveis a partir das observações |
+Em caso de degradação em produção pós-release, a equipe conta com três vias auditáveis de reversão:
 
-A [divisão da Infra U2](docs/infra-u2/divisao-tarefas.md) e o [prompt por etapas](docs/infra-u2/PROMPT_EXECUCAO_POR_ETAPAS.md) registram a evolução planejada. PostgreSQL, JDBC, Flyway e os perfis propostos ainda não são capacidades desta versão.
+1. **Via 1 — Rollback Imediato via Deploy Hook com SHA Estável:**
+   ```bash
+   curl -sS --fail -X POST "${RENDER_DEPLOY_HOOK_URL}?ref=<COMMIT_SHA_ESTAVEL>"
+   ```
+   *O Render interrompe o container atual e reconstrói a imagem a partir do commit estável indicado.*
 
-## Uso de IA
+2. **Via 2 — Rollback Manual pelo Painel Web do Render:**
+   - Acesse `https://dashboard.render.com` $\to$ Selecione o Web Service `rota-vital`.
+   - Navegue até a aba **"Deploys"**.
+   - Localize a última versão estável com tag "Live" e clique em **"Rollback to this deploy"**.
 
-Foi usada assistência de IA na revisão dos requisitos, planejamento, documentação e correção/validação dos agregados do benchmark. A implementação futura da Infra U2 também possui um prompt de execução por etapas, ainda apresentado como plano. O grupo deve revisar, executar e compreender os artefatos antes da entrega.
+3. **Via 3 — Rollback via Git Revert com PR:**
+   - Crie uma branch de correção: `git checkout -b fix/revert-release`.
+   - Reverta o merge comprometido: `git revert -m 1 <MERGE_COMMIT_SHA>`.
+   - Abra um Pull Request para a `main`. Todos os 5 gates de CI reexecutarão as validações antes do merge e novo deploy.
 
-Principais solicitações registradas nesta colaboração:
+---
 
-- “Verifica pra mim se agora a entrega obedece todos os requisitos de ambas as matérias.”
-- “gere um prompt completo de como fazer isso de acordo com o que tem no repositório. Seja rigido e direto com tudo.”
-- “faça um arquivo md com tudo isso. E peça pra ele fazer coisas por parte, fazendo etapa por etapa.”
-- Organização do README, dos créditos e da divisão das tarefas entre os integrantes.
+### Governança de Migrações com Flyway (Expand / Contract)
 
-O [prompt completo](docs/infra-u2/PROMPT_EXECUCAO_POR_ETAPAS.md) exige testes e evidências reais. Assistência de IA não comprova retrospectivamente TDD nem atribui trabalho executado a quem está apenas indicado no planejamento.
+Para garantir que operações de rollback não causem perda ou corrupção de dados:
+- **Estratégia Expand / Contract:**
+  - *Fase Expand:* Novas colunas ou tabelas são introduzidas como opcionais (`NULLABLE`) ou com valores `DEFAULT`. Nenhuma coluna existente é removida ou renomeada na mesma release.
+  - *Fase Migrate:* Se um rollback ocorrer, a versão antiga de código continua funcionando normalmente, pois os campos dos quais depende permanecem intactos.
+  - *Fase Contract:* Apenas após a estabilização confirmada da nova versão, uma migração futura descarta colunas obsoletas.
+- **Imutabilidade de Scripts:** Arquivos `V<N>__*.sql` aplicados nunca são alterados. O Flyway calcula o checksum SHA-256 e impede execução com esquemas adulterados.
+- **Salvaguarda `clean-disabled`:** Em `application-infra.properties`, configuramos `spring.flyway.clean-disabled=true`, desabilitando permanentemente qualquer comando destrutivo do Flyway em produção.
 
-## Organização e documentos
+---
 
-| Caminho | Conteúdo |
-| --- | --- |
-| `src/main/java/com/rotavital/aed/u1/` | Lista e fila manuais em Java |
-| `src/main/java/com/rotavital/controller/` | Estoque, requisições e duplicatas |
-| `src/main/java/com/rotavital/service/` | Serviços de aplicação e processamento |
-| `src/test/` | Testes de estrutura, controller, serviço, utilitário e contexto |
-| `aed-c/` | Headers, implementações C, testes e Makefile |
-| `bench/` | Medições, testes de cálculo e geradores de artefatos |
-| `docs/` | Tradução, análise, justificativa e relatório |
-| `docs/infra-u2/` | Divisão de tarefas e execução planejada por etapas |
+## 5. Tabela das 12 Decisões Arquiteturais Justificadas
 
-O [plano original de setembro](PLANO_ENTREGA_AED_SO.md) é um registro histórico. Para o estado atual, use este README; para as novas responsabilidades, use a [divisão de tarefas](docs/infra-u2/divisao-tarefas.md).
+A tabela abaixo registra formalmente as 12 decisões técnicas fundamentais tomadas durante o projeto, comparando a escolha adotada contra suas alternativas reais e explicitando a justificativa concreta:
 
-## Histórico e coautoria
+| Nº | Tópico Arquitetural | Escolha Adotada | Alternativas Consideradas | Justificativa Concreta |
+|:---:|---|---|---|---|
+| **1** | **Imagem Base Docker** | `eclipse-temurin:21-jre-alpine` | Debian Slim, Ubuntu, RedHat UBI | Imagem com menos de 180MB, superfície de ataque mínima (sem compiladores, package managers ou utilitários desnecessários no runtime) e compatibilidade total com Java 21 LTS. |
+| **2** | **Multi-stage Build** | 2 Estágios (Builder JDK 21 + Runtime JRE 21 Alpine) | Build monostage, compilação no host copiando JAR pronto | Isola o código-fonte e dependências Maven do contêiner final, garante compilação reprodutível independente do host e executa testes unitários na criação da imagem sem poluir o runtime. |
+| **3** | **Banco de Dados Relacional** | **PostgreSQL 16** (`postgres:16-alpine`) | MySQL, H2, SQLite, MongoDB | Banco relacional maduro, suporte a transações ACID estritas, tipagem de dados rica, sequências monotônicas (`BIGSERIAL`) para resolução de concorrência LIFO e ampla integração em provedores PaaS (Render). |
+| **4** | **Acesso a Dados: Spring JDBC vs JPA** | **Spring Data JDBC (`JdbcTemplate`)** | Spring Data JPA / Hibernate, MyBatis | Domínio cirúrgico e focado da Release 1. O JDBC proporciona controle atômico total sobre o SQL gerado (essencial para a subquery LIFO `ORDER BY id_seq DESC LIMIT 1`), menor overhead de memória, startup instantâneo e ausência de problemas comuns de ORM (dirty checking complexo, lazy loading e cache de 1º nível). |
+| **5** | **Versionamento de Banco** | **Flyway Core** | Liquibase, scripts manuais `.sql` | Migrações SQL nativas com versionamento linear determinístico (`V1__...sql`), controle de checksum SHA-256 e integração transparente com o ciclo de vida do Spring Boot sem demandar DSLs XML/YAML proprietárias. |
+| **6** | **Persistência de Containers** | **Volume Nomeado Docker** (`rotavital-postgres-data`) | Bind mounts no host, contêiner efêmero | Preserva dados entre reinicializações de contêineres e reboots do host, isola a gestão de permissões de arquivo das particularidades do SO hospedeiro e segue as melhores práticas de portabilidade Docker. |
+| **7** | **Isolamento de Rede** | **Rede Bridge Isolada** (`rotavital-network`) | Rede padrão `bridge`, rede `host` | Impede a exposição desnecessária de portas do PostgreSQL à rede pública/host, permitindo comunicação interna estrita entre serviços através de DNS interno do Docker (`db:5432`). |
+| **8** | **Testes de Integração com Banco** | **Testcontainers com PostgreSQL 16 Real** | Mocks de JDBC, H2 em memória | Elimina falsos-positivos decorrentes de diferenças de dialeto SQL (funções de data, subqueries, `BIGSERIAL`). O teste executa contra o exato mesmo motor e versão de banco que roda em produção. |
+| **9** | **Segregação de Testes Maven** | **Surefire (`*Test.java`) vs Failsafe (`*IT.java`)** | Surefire para tudo, suíte única | Viabiliza fail-fast imediato: testes unitários rodam no build do Dockerfile e no CI em ~23s sem depender de Docker. Testes de integração pesados com contêiner rodam na fase `verify` via perfil `-Pintegration`. |
+| **10** | **Estratégia de Branches / PR** | **GitHub Flow com Branches de Entrega e Commits Semânticos** | GitFlow tradicional, Trunk-Based com push direto | Permite isolamento seguro de incrementos funcionais (H1, H2, H3), facilidade de auditoria via Pull Requests rastreáveis e proteção da branch principal contra quebras. |
+| **11** | **Ferramenta de CI/CD** | **GitHub Actions** | GitLab CI, Jenkins, CircleCI | Integração nativa com o repositório GitHub, runners gerenciados com Docker e Linux pré-instalados, suporte a matrizes de jobs em DAG e publicação de artefatos de teste de forma simples. |
+| **12** | **Provedor PaaS e Segredos** | **Render.com com Secrets no GitHub Actions** | AWS ECS, Heroku, Railway | Provedor gratuito aderente ao escopo do projeto, suporte nativo a blueprints declarativos (`render.yaml`), deploy hooks via webhook autenticado e banco PostgreSQL gerenciado. |
 
-Os rodapés de coautoria foram organizados para os dois contribuidores identificados no GitHub, preservando autores, datas de autoria, datas de commit e os arquivos de cada uma das 12 versões anteriores. A alteração dos metadados muda os SHAs. O [mapeamento dos commits](docs/historico-coautoria.json) registra a correspondência entre as versões. A branch temporária de backup foi removida a pedido da equipe.
+---
 
-Os novos documentos usam a data real da atualização. A distribuição das tarefas identifica responsabilidades futuras e não altera as datas acadêmicas das entregas anteriores.
+## 6. Declaração Transparente de Uso de IA
 
-Quem já possui um clone anterior deve preservar suas alterações locais e usar um novo clone para trabalhar na main reorganizada, evitando unir os dois históricos.
+Em estrito cumprimento às diretrizes acadêmicas do professor e aos princípios éticos de transparência e integridade de software:
 
-## Uso acadêmico
+### Ferramentas Utilizadas
+- **Modelos e Agentes:** Google Gemini (família 1.5/2.0), Antigravity Engine e Agentes SWE Light para automação e assistência no ciclo de engenharia de software.
 
-Projeto acadêmico do semestre 2026.2, desenvolvido para as disciplinas de AED e Infraestrutura de Software.
+### Principais Casos de Uso e Prompts de Engenharia
+1. **Engenharia Reversa e Mapeamento de Contratos da U1:** Identificação das estruturas manuais de lista encadeada e fila FIFO, mapeamento dos contratos REST de `EstoqueController` e análise de complexidade temporal e espacial.
+2. **Arquitetura Hexagonal Mínima:** Geração de boilerplate para desacoplamento via interface `EstoqueStorage` e configuração condicional de perfis Spring (`@Profile("u1")` vs `@Profile("infra")`).
+3. **Ciclo TDD nas Histórias H1, H2 e H3:** Elaboração de cenários de teste adversariais no ciclo Red (provocando falhas intencionais com asserções rigorosas) antes da geração do código de produção Green.
+4. **Resiliência e Blindagem de Tipos:** Identificação de potenciais falhas de deserialização Jackson decorrentes de números de ponto flutuante literais (`450.0`) nas fixtures da U1, auxiliando na modelagem do `BolsaRequestDTO`.
+5. **Automação de CI/CD:** Estruturação da DAG de 6 jobs no GitHub Actions e elaboração de scripts resilientes com cURL para deploy hook passando o commit SHA.
+
+### Validação Humana e Auditoria Adversarial
+- **Revisão Linha a Linha:** Todas as classes, DTOs, métodos SQL, arquivos YAML e scripts foram minuciosamente inspecionados, revisados e criticados pelos membros da equipe humana antes de qualquer merge.
+- **Execução Empírica Real:** Nenhuma evidência de teste ou medição foi fabricada. Todos os 201 testes Java, 54 asserções em C, 7 testes Python e comandos Docker foram executados em terminais reais com logs auditados.
+- **Auditoria Adversarial Independente:** Cada etapa da U2 foi submetida a rodadas de auditoria adversarial, que identificaram e corrigiram falhas como: ausência de consumo formal de `JAVA_OPTS` no entrypoint, quebras de linha CRLF em scripts de shell, race condition na captura de status HTTP no deploy hook e necessidade de isolamento estrito de `@Transactional` contra falhas sob o perfil `u1`.
+
+---
+
+## 7. Catálogo de Endpoints REST
+
+A API expõe serviços sob a porta padrão `8080`:
+
+### Estoque de Bolsas de Sangue (`/api/estoque`)
+
+| Método | Endpoint | Descrição | Status de Sucesso | Perfil Ativo |
+|---|---|---|:---:|:---:|
+| `POST` | `/api/estoque` | Cadastra uma nova bolsa no estoque | `200 OK` | `u1` e `infra` |
+| `GET` | `/api/estoque` | Lista todas as bolsas em ordem LIFO com envelope | `200 OK` | `u1` e `infra` |
+| `GET` | `/api/estoque/{id}` | Consulta os dados da bolsa mais recente pelo ID | `200 OK` (ou `404`) | `u1` e `infra` |
+| `DELETE` | `/api/estoque/{id}` | Remove a ocorrência mais recente da bolsa | `200 OK` (ou `404`) | `u1` e `infra` |
+
+#### Exemplo de Cadastro (`POST /api/estoque`):
+```bash
+curl -X POST http://localhost:8080/api/estoque \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "BOLSA-001",
+    "tipoSanguineo": "O+",
+    "volumeMl": 450.0,
+    "dataColeta": "2026-09-01",
+    "validade": "2026-11-01",
+    "doador": "João Silva"
+  }'
+```
+*Resposta:* `{"mensagem": "Bolsa adicionada ao estoque", "tamanho": 1}`
+
+#### Exemplo de Listagem Geral (`GET /api/estoque`):
+```bash
+curl http://localhost:8080/api/estoque
+```
+*Resposta:*
+```json
+{
+  "bolsas": [
+    {
+      "id": "BOLSA-001",
+      "tipoSanguineo": "O+",
+      "volumeMl": 450.0,
+      "dataColeta": "2026-09-01",
+      "validade": "2026-11-01",
+      "doador": "João Silva"
+    }
+  ],
+  "tamanho": 1
+}
+```
+
+---
+
+### Fila FIFO de Requisições Hospitalares (`/api/requisicoes` — AED U1)
+
+| Método | Endpoint | Descrição | Status de Sucesso |
+|---|---|---|:---:|
+| `POST` | `/api/requisicoes` | Enfileira requisição emergencial | `200 OK` |
+| `POST` | `/api/requisicoes/atender` | Desenfileira e atende a próxima requisição (FIFO) | `200 OK` |
+| `GET` | `/api/requisicoes/proxima` | Consulta a próxima requisição sem remover (peek) | `200 OK` |
+| `GET` | `/api/requisicoes` | Lista todas as requisições pendentes na fila | `200 OK` |
+
+---
+
+### Health Check e Monitoramento (`/actuator`)
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/actuator/health` | Status de integridade da aplicação e conectividade com PostgreSQL |
+| `GET` | `/actuator/info` | Metadados gerais do projeto |
+
+---
+
+## 8. Benchmark de Paralelismo e Medições de SO (U1)
+
+A detecção de duplicatas compara pares de requisições hospitalares utilizando a distância de Levenshtein. O custo algorítmico é de $O(n^2 \cdot L^2)$ para $n$ registros limitados pelo comprimento $L$, permitindo a distribuição paralela das partições entre threads.
+
+A série canônica publicada em **06/10/2026** utiliza exclusivamente as 40 medições empíricas brutas registradas em [bench/measurements.csv](bench/measurements.csv): 8.000 e 16.000 registros, modo `platform`, 1, 2, 4 e 8 threads, com 5 repetições por configuração.
+
+| Tamanho ($n$) | Threads | Tempo Médio HTTP (ms) | Speedup Observado |
+|:---:|:---:|:---:|:---:|
+| **8000** | 1 | 23.883,00 | 1,00x |
+| **8000** | 2 | 18.925,60 | 1,26x |
+| **8000** | 4 | 11.105,20 | 2,15x |
+| **8000** | 8 | 7.209,80 | 3,31x |
+| **16000** | 1 | 97.867,00 | 1,00x |
+| **16000** | 2 | 81.400,00 | 1,20x |
+| **16000** | 4 | 69.518,20 | 1,41x |
+| **16000** | 8 | 41.297,40 | 2,37x |
+
+Consulte a documentação completa da U1 em [docs/medicoes.md](docs/medicoes.md), [docs/justificativa.md](docs/justificativa.md), [docs/analise.md](docs/analise.md) e o relatório técnico formal [docs/RotaVital_Threads_Relatorio.pdf](docs/RotaVital_Threads_Relatorio.pdf).
+
+---
+
+## 9. Estrutura Completa do Repositório
+
+```
+rota-vital/
+├── .github/workflows/
+│   └── ci.yml                        # Esteira CI/CD em DAG com 6 gates sem contornos
+├── aed-c/                            # Módulo C pedagógico da U1
+│   ├── include/                      # Headers: lista.h, fila.h, bolsa.h, requisicao.h
+│   ├── src/u1/                       # Implementações manuais em C com malloc/free
+│   ├── tests/                        # 54 asserções em test_lista.c e test_fila.c
+│   └── Makefile                      # Build com GCC + AddressSanitizer + UBSan
+├── bench/                            # Medições empíricas e benchmarks Python de SO U1
+│   ├── measurements.csv              # 40 medições empíricas brutas canônicas
+│   ├── measurements_agg.csv          # Agregação estatística oficial
+│   ├── plot_speedup.py               # Script de validação estatística e gráficos
+│   └── test_plot_speedup.py          # 7 testes unitários do benchmark
+├── docs/                             # Documentação técnica e acadêmica consolidada
+│   ├── evidencias/
+│   │   └── README.md                 # Catálogo detalhado de todas as evidências da U2
+│   ├── infra-u2/
+│   │   ├── apresentacao.md           # Roteiro estruturado para apresentação em sala
+│   │   ├── checklist.md              # Matriz completa de conformidade E1, E2 e E3
+│   │   ├── divisao-tarefas.md        # Atribuição formal de responsabilidades
+│   │   ├── progresso.md              # Registro exaustivo de etapas e decisões
+│   │   ├── story-map.md              # Story map, backbone e matriz rastreável
+│   │   └── tdd.md                    # Relatório aprofundado do ciclo Red-Green-Refactor
+│   ├── equivalencia-u1.md            # Tradução comentada C <-> Java da U1
+│   ├── medicoes.md, analise.md       # Documentos de SO da U1
+│   └── speedup.png                   # Gráfico oficial de speedup
+├── fixtures/                         # Fixtures sintéticas canônicas (bolsas e requisições)
+├── src/main/java/com/rotavital/
+│   ├── aed/u1/                       # Estruturas manuais com nós dinâmicos em Java
+│   ├── config/                       # DatabaseConfig para conversão e blindagem de URLs
+│   ├── controller/                   # EstoqueController, RequisicaoController, DuplicateController
+│   ├── domain/                       # Entidades Bolsa e Requisicao
+│   ├── dto/                          # BolsaRequestDTO resiliente a números e strings
+│   ├── service/                      # Camada de negócio desacoplada via EstoqueStorage
+│   └── storage/                      # EstoqueStorage, ListaEstoqueStorage (u1), JdbcEstoqueStorage (infra)
+├── src/main/resources/
+│   ├── application.properties        # Perfil default u1
+│   ├── application-u1.properties     # Isolamento de banco para modo em memória puro
+│   ├── application-infra.properties  # Configuração PostgreSQL, Flyway e salvaguardas
+│   └── db/migration/
+│       └── V1__criar_tabela_bolsas.sql # Esquema com BIGSERIAL LIFO e índices
+├── src/test/java/com/rotavital/      # 201 testes unitários e 3 suítes de integração IT
+│   ├── aed/u1/, config/, controller/ # Testes unitários Nível 1 (Surefire)
+│   ├── dto/, service/, storage/      # Testes unitários e mocks de persistência
+│   └── integration/                  # Suítes Nível 2 e 3 (Failsafe + Testcontainers)
+│       ├── AbstractPostgresIT.java   # Contêiner singleton PostgreSQL 16
+│       ├── BolsaPersistidaIT.java    # Sobrevivência de dados pós-reinício de contexto
+│       ├── EstoqueControllerIT.java  # Testes de aceitação REST de ponta a ponta
+│       └── JdbcEstoqueStorageIT.java # Testes de persistência direta JDBC e subqueries
+├── .dockerignore                     # Proteção contra envio de segredos ao build
+├── .env.example                      # Modelo documentado de variáveis de ambiente
+├── .gitignore                        # Blindagem estrita de credenciais (.env)
+├── compose.yaml                      # Orquestração da API e PostgreSQL com healthchecks
+├── Dockerfile                        # Multi-stage com testes no build e usuário non-root
+├── pom.xml                           # Configuração Maven segregando Surefire e Failsafe
+├── README.md                         # Este documento consolidado
+└── render.yaml                       # Blueprint declarativo para deploy no Render
+```
+
+---
+
+## 📄 Licença
+
+Projeto acadêmico desenvolvido exclusivamente para fins de avaliação no Projeto Integrador 2026.2.

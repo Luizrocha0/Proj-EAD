@@ -75,4 +75,4 @@ Os marcos são planejamento. Registre a consequência de uma falha antes de avan
 
 Luiz explica as decisões técnicas e a integração; Eduardo demonstra backend e persistência; Eliziane apresenta testes e Red/Green; Pedro demonstra containers e pipeline; Ricardo contextualiza requisitos, organização, evidências e entrega. Todos devem compreender o fluxo completo e as limitações.
 
-O [prompt por etapas](PROMPT_EXECUCAO_POR_ETAPAS.md) detalha a execução. Ele exige uma etapa por resposta, validação antes do avanço e retomada quando o usuário mandar continuar.
+O [prompt por etapas](../../PROMPT_ROTA_VITAL_INFRA_U2_ETAPAS.md) detalha a execução. Ele exige uma etapa por resposta, validação antes do avanço e retomada quando o usuário mandar continuar.
