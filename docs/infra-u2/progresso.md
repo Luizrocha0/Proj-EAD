@@ -17,7 +17,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 6** | E2: Integração e Gates na Esteira | **Concluída** | 17/10/2026 |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | **Concluída** | 17/10/2026 |
 | **Etapa 8** | Documentação e Apresentação | **Concluída** | 17/10/2026 |
-| **Etapa 9** | Auditoria Final | **Concluída** | `ed1b5e1` (17/10/2026) |
+| **Etapa 9** | Auditoria Final | **Concluída** | `205c354` (17/10/2026) |
 
 ---
 
@@ -1528,7 +1528,7 @@ Todas as suítes de teste e verificações estruturais foram reexecutadas e audi
 - **Estado:** Concluída
 - **Data de Execução:** 17/10/2026
 - **Commit HEAD Auditado Inicial (Início da Etapa 9):** `68256a4`
-- **Commit HEAD Auditado Consolidado (Pós-Revisões R1/R2/R3):** `ed1b5e1`
+- **Commit HEAD Auditado Consolidado (Pós-Revisões R1/R2/R3):** `205c354`
 - **Ambiente de Execução:** Windows (PowerShell), OpenJDK 25.0.4.1 LTS / Java 21 LTS compatível, Apache Maven 3.9.9 Wrapper, MinGW GCC 6.3.0 (C11), Python 3.11.9, Docker Compose v2.x.
 - **Regra de Integridade:** Validação independente de ponta a ponta sem modificação regressiva de código de produção, testes ou patrimônio histórico da U1.
 
