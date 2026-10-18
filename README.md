@@ -490,6 +490,7 @@ curl http://localhost:8080/api/estoque
 
 ---
 
+<a id="benchmark-de-paralelismo-threads"></a>
 ## 8. Benchmark de Paralelismo e Medições de SO (U1)
 
 A detecção de duplicatas compara pares de requisições hospitalares utilizando a distância de Levenshtein. O custo algorítmico é de $O(n^2 \cdot L^2)$ para $n$ registros limitados pelo comprimento $L$, permitindo a distribuição paralela das partições entre threads.
