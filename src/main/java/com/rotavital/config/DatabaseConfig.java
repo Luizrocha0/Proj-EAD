@@ -2,7 +2,7 @@ package com.rotavital.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
-import java.net.URI;
 
 /**
  * Configuração de DataSource para o perfil 'infra' quando a variável de ambiente
@@ -26,7 +25,7 @@ public class DatabaseConfig {
 
     @Bean
     @Primary
-    @ConditionalOnProperty(name = "DATABASE_URL")
+    @ConditionalOnExpression("!'${DATABASE_URL:}'.trim().isEmpty()")
     public DataSource dataSourceFromDatabaseUrl(Environment env) {
         String dbUrl = env.getProperty("DATABASE_URL");
         if (dbUrl == null || dbUrl.isBlank()) {
@@ -42,16 +41,22 @@ public class DatabaseConfig {
         }
 
         String trimmed = dbUrl.trim();
-        if (trimmed.startsWith("jdbc:")) {
+        String lowerTrimmed = trimmed.toLowerCase();
+
+        if (lowerTrimmed.startsWith("jdbc:")) {
             return DataSourceBuilder.create()
                     .url(trimmed)
                     .driverClassName("org.postgresql.Driver")
                     .build();
         }
 
+        if (!lowerTrimmed.startsWith("postgres://") && !lowerTrimmed.startsWith("postgresql://")) {
+            throw new IllegalArgumentException("Esquema de URL não suportado na DATABASE_URL (esperado 'postgres://', 'postgresql://' ou 'jdbc:'): " + dbUrl);
+        }
+
         try {
-            // Remove prefixos postgres:// ou postgresql://
-            String withoutScheme = trimmed.replaceFirst("^postgres(?:ql)?://", "");
+            // Remove prefixos postgres:// ou postgresql:// (case-insensitive)
+            String withoutScheme = trimmed.replaceFirst("^(?i)postgres(?:ql)?://", "");
 
             // Separar query string (?...) se houver
             String query = null;
@@ -97,13 +102,15 @@ public class DatabaseConfig {
             int port = 5432;
             if (hostPort.startsWith("[")) {
                 int closingBracket = hostPort.indexOf(']');
-                if (closingBracket > 0) {
-                    host = hostPort.substring(0, closingBracket + 1);
-                    if (closingBracket + 1 < hostPort.length() && hostPort.charAt(closingBracket + 1) == ':') {
-                        port = Integer.parseInt(hostPort.substring(closingBracket + 2));
+                if (closingBracket <= 0) {
+                    throw new IllegalArgumentException("Endereço IPv6 com colchetes inválidos na DATABASE_URL: " + dbUrl);
+                }
+                host = hostPort.substring(0, closingBracket + 1);
+                if (closingBracket + 1 < hostPort.length() && hostPort.charAt(closingBracket + 1) == ':') {
+                    String portStr = hostPort.substring(closingBracket + 2);
+                    if (!portStr.isBlank()) {
+                        port = Integer.parseInt(portStr);
                     }
-                } else {
-                    host = hostPort;
                 }
             } else {
                 int lastColon = hostPort.lastIndexOf(':');

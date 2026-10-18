@@ -264,25 +264,30 @@ jobs:
           else
             HOOK_URL="${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"
           fi
-          curl -sS --fail -X POST "$HOOK_URL"
+          DEPLOY_RESP=$(curl -sS --fail -X POST "$HOOK_URL")
+          echo "Resposta do Render Deploy Hook: $DEPLOY_RESP"
           echo "✅ Deploy disparado no Render para o commit ${{ github.sha }}"
 
       - name: Aguardar e verificar URL pública
         env:
           RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         run: |
-          if [ -z "$RENDER_APP_URL" ]; then
-            echo "❌ RENDER_APP_URL não configurado."
-            exit 1
-          fi
-          APP_URL="${RENDER_APP_URL%/}"
-          echo "Aguardando Render iniciar a instância (limite de 5 minutos)..."
+          APP_URL="${RENDER_APP_URL:-https://rota-vital.onrender.com}"
+          APP_URL="${APP_URL%/}"
+          echo "Aguardando Render atualizar a instância (limite de 5 minutos)..."
           MAX_RETRIES=30
           INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/actuator/health")
+            HEALTH_RESP=$(curl -s "$APP_URL/actuator/health" || echo "")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/actuator/health" || echo "000")
             if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo — $APP_URL"
+              echo "✅ Aplicação em produção respondendo (HTTP 200) — $APP_URL"
+              echo "Detalhes do Actuator Health: $HEALTH_RESP"
+              if echo "$HEALTH_RESP" | grep -q '"db"'; then
+                echo "✅ Componente PostgreSQL ('db') ativo e saudável em produção!"
+              else
+                echo "ℹ️  Nota: Componente 'db' ainda não detectado (aguardando provisionamento de rotavital-db via blueprint pelo mantenedor)."
+              fi
               exit 0
             fi
             echo "Tentativa $i falhou (status $STATUS). Aguardando $INTERVAL segundos..."
