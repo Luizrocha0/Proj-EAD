@@ -95,7 +95,6 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 - `docs/speedup.png`: Gráfico consolidado oficial de speedup de SO U1.
 - `docs/RotaVital_Threads_Relatorio.pdf`: Relatório formal em PDF de 5 páginas da atividade de SO U1.
 - `docs/equivalencia-u1.md`: Guia de equivalência e contratos pedagógicos C $\leftrightarrow$ Java da entrega de AED U1.
-- `PLANO_ENTREGA_AED_SO.md`: Documento de planejamento conjunto inicial de AED e SO definindo a visão de unificação do backend.
 - `README.md`: Documentação geral da base legada com instruções e visão geral do projeto.
 
 #### 1.6. Infraestrutura Atual (Legado)
@@ -318,7 +317,7 @@ Na próxima etapa (**Etapa 2**), será construída a fundação de infraestrutur
   - Atualização de `docs/infra-u2/progresso.md` registrando a conclusão da Etapa 1 no histórico e documentando as decisões arquiteturais.
   - Nenhum arquivo em `src/main/` ou `aed-c/src/` foi modificado ou excluído, cumprindo rigorosamente a regra de integridade estrita e evitando qualquer implementação antecipada.
 - **Verificação:** 
-  - Validação da integridade estrutural e de links cruzados entre `docs/infra-u2/story-map.md`, `docs/infra-u2/progresso.md` e `PROMPT_ROTA_VITAL_INFRA_U2_ETAPAS.md`.
+  - Validação da integridade estrutural e de links cruzados entre `docs/infra-u2/story-map.md`, `docs/infra-u2/progresso.md` e a especificação da U2.
   - Verificação de `git status` comprovando que nenhum arquivo de código de produção ou teste pré-existente foi alterado.
   - Linha de base da U1 preservada integralmente (48 testes Java, 54 testes C e 7 testes Python intactos).
 - **Pendências:** 
@@ -1808,9 +1807,9 @@ Em estrita consonância com o princípio de transparência técnica, documentam-
 
 ---
 
-### 6. Conclusão Formal e Parecer da Auditoria U2 (Protocolo Seção 10)
+### 6. Conclusão Formal e Parecer da Auditoria U2 (Protocolo de Auditoria)
 
-Em cumprimento ao protocolo formal estabelecido na Seção 10 do documento de diretrizes (`PROMPT_ROTA_VITAL_INFRA_U2_ETAPAS.md`), emite-se o parecer conclusivo da auditoria final:
+Em cumprimento ao protocolo formal estabelecido nas diretrizes da disciplina, emite-se o parecer conclusivo da auditoria final:
 
 1. **Resumo das Mudanças, Arquivos e Decisões:**
    Foram entregues todas as estruturas requeridas pelos blocos E1, E2 e E3, abrangendo containerização Docker multi-stage non-root, orquestração Docker Compose com PostgreSQL 16 e volumes persistentes, arquitetura hexagonal com portas e adaptadores (`EstoqueStorage`) segregando os perfis `u1` e `infra`, ciclo TDD rigoroso para as histórias H1, H2 e H3 com suporte a chaves LIFO e duplicatas, esteira de CI/CD em DAG com 6 gates sem contornos permissivos, blueprint declarativo `render.yaml` e documentação técnica completa no `README.md` com 12 decisões justificadas e catálogo de evidências.
