@@ -1404,7 +1404,7 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
 - **Pendências:** 
   - Ativação das regras de proteção de branch na `main` no GitHub pelo mantenedor do repositório (`Luizrocha0`) utilizando as credenciais administrativas e o comando `gh api` documentado.
   - Configuração da secret `RENDER_DEPLOY_HOOK_URL` no GitHub Actions pelo mantenedor para disparo automático do webhook no merge da PR para a `main`.
-- **Próxima etapa:** **Etapa 8 — Documentação, README Consolidado e Apresentação** (consolidação do README.md com integrantes, instruções de execução, decisões arquiteturais, uso ético de IA e elaboração do roteiro de apresentação em `docs/infra-u2/apresentacao.md`).
+- **Próxima etapa:** **Etapa 8 — Documentação, README Consolidado e Apresentação** (consolidação do README.md com integrantes, instruções de execução, decisões arquiteturais, uso ético de IA e planejamento da apresentação em sala).
 
 ---
 
@@ -1415,7 +1415,6 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
 - **Artefatos Produzidos / Consolidados:**
   - `README.md` (consolidação completa na raiz)
   - `docs/infra-u2/checklist.md` (matriz exaustiva de conformidade E1/E2/E3/DOC com 43 requisitos)
-  - `docs/infra-u2/apresentacao.md` (roteiro detalhado para sala de aula com divisão de falas, cronograma de 15-20 min e FAQ da banca)
   - `docs/evidencias/README.md` (catálogo estruturado de todas as evidências geradas e auditadas da U2)
   - `docs/infra-u2/progresso.md` (registro formal de conclusão da Etapa 8)
 - **Regra de Integridade:** Preservação estrita dos códigos C e Java da U1, seus testes, relatórios de medição, fixtures e dados históricos. A **Etapa 9 (Auditoria Final)** permanece **EXPRESSAMENTE PENDENTE**.
@@ -1454,14 +1453,14 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
    - Confrontação item a item com arquivos do repositório, suítes de testes associadas, evidências concretas observadas e classificação auditada.
    - Resultado: **40 itens ATENDIDOS** de forma autônoma e **3 itens PENDENTES** de ação administrativa externa do mantenedor (`Luizrocha0`) no repositório GitHub e na conta Render.
 
-3. **Elaboração do Roteiro de Apresentação em Sala (`docs/infra-u2/apresentacao.md`):**
-   - Estruturação de apresentação de 15 a 20 minutos com divisão balanceada de falas entre os 5 integrantes:
+3. **Planejamento da Apresentação em Sala (`docs/infra-u2/divisao-tarefas.md`):**
+   - Estruturação de apresentação de 15 a 20 minutos com divisão balanceada de tópicos entre os 5 integrantes:
      - Bloco 1: Eduardo Borges (Introdução, Contexto e Transição U1 $\to$ U2).
      - Bloco 2: Luiz Henrique Rocha (E1: Containerização e Infraestrutura Docker).
      - Bloco 3: Eliziane Mota (E2: Persistência Relacional, TDD e Resolução LIFO de Duplicatas).
      - Bloco 4: Pedro Iranildo (E2: Pirâmide de Testes em Três Níveis e Não-Regressão da U1).
      - Bloco 5: Ricardo Severiano de Souza Filho (E3: Pipeline CI/CD, Deploy no Render, Rollback e Demonstração).
-   - Falas sugeridas detalhadas, pontos de destaque técnico, guia rápido de comandos para demonstração ao vivo no terminal (incluindo u1 vs infra e teste de proibição de fallback) e seção completa de FAQ com 8 perguntas críticas e respostas antecipadas para a banca (Rollback em 3 vias, DAG de 6 gates no CI, Dockerfile/segurança non-root, comprovação auditável de TDD, governança Flyway Expand/Contract, concorrência LIFO, Spring JDBC vs JPA e proteção remota da main).
+   - Definição de papéis técnicos, guia de comandos para demonstração ao vivo no terminal (incluindo u1 vs infra e teste de proibição de fallback) e preparação técnica para a banca examinadora.
 
 4. **Organização do Catálogo de Evidências (`docs/evidencias/README.md`):**
    - Indexação estruturada de todas as evidências empíricas da entrega da U2:
@@ -1492,7 +1491,7 @@ Todas as suítes de teste e verificações estruturais foram reexecutadas e audi
    - Comando: `docker compose config --quiet`
    - Resultado: Código de saída 0 (sintaxe válida, variáveis interpoladas corretamente).
 5. **Inspeção de Integridade dos Links e Documentos:**
-   - Validação cruzada de referências e âncoras GFM entre `README.md`, `docs/infra-u2/checklist.md`, `docs/infra-u2/apresentacao.md`, `docs/evidencias/README.md`, `docs/infra-u2/story-map.md`, `docs/infra-u2/tdd.md` e `docs/infra-u2/progresso.md`: 100% de integridade e 0 links/âncoras quebradas.
+   - Validação cruzada de referências e âncoras GFM entre `README.md`, `docs/infra-u2/checklist.md`, `docs/evidencias/README.md`, `docs/infra-u2/story-map.md`, `docs/infra-u2/tdd.md` e `docs/infra-u2/progresso.md`: 100% de integridade e 0 links/âncoras quebradas.
 
 ---
 
@@ -1502,7 +1501,7 @@ Todas as suítes de teste e verificações estruturais foram reexecutadas e audi
 - **Mudanças:** 
   - Consolidação e reestruturação completa de `README.md` na raiz com: identificação dos 5 integrantes, como rodar (pré-requisitos, `.env.example`, Docker Compose com healthchecks, Maven u1 vs infra com isolamento autônomo e nota sobre `JAVA_HOME` no Windows), testes por nível (Surefire, Failsafe com Testcontainers, C com sanitizers, Python benchmarks), pipeline CI/CD (DAG de 6 gates sem contornos permissivos, deploy hook com SHA validado, URL pública e rollback em 3 vias com governança Flyway Expand/Contract), tabela exaustiva das 12 decisões arquiteturais justificadas, declaração transparente de uso de IA com partes revisadas e catálogo completo de endpoints REST.
   - Criação de `docs/infra-u2/checklist.md` estabelecendo a matriz de conformidade E1/E2/E3/E4 com 43 requisitos confrontados com código, testes e evidências observáveis (40 Atendidos, 3 Pendentes externos).
-  - Criação de `docs/infra-u2/apresentacao.md` contendo roteiro profissional para sala de aula (15 a 20 min) com cronograma e falas delimitadas para os 5 integrantes, guia de comandos ao vivo (incluindo testes de u1 vs infra e de proibição de fallback) e FAQ completo com 8 perguntas cobrindo Rollback, DAG, Docker, TDD e Flyway.
+  - Planejamento da apresentação em sala de aula (15 a 20 min) com cronograma e tópicos delimitados para os 5 integrantes na divisão de tarefas, guia de comandos ao vivo e preparação técnica para a banca.
   - Criação de `docs/evidencias/README.md` estruturando e catalogando exaustivamente todas as evidências empíricas de testes, containerização, CI/CD, deploy e commits de TDD com âncoras GFM estritas.
   - Atualização do histórico e registro detalhado em `docs/infra-u2/progresso.md`.
 - **Verificação:** 
@@ -1560,7 +1559,7 @@ A entrega da Unidade 2 de Infraestrutura de Software (Containers, TDD e Deploy A
    - Procedimento de rollback documentado em 3 vias com governança Flyway (Expand / Contract).
 4. **Documentação e Evidências (Etapa 8):**
    - `README.md`: Documentação consolidada na raiz com integrantes, instruções de execução, guia de testes por nível, esteira CI/CD, 12 decisões arquiteturais e uso transparente de IA.
-   - `docs/infra-u2/checklist.md`, `docs/infra-u2/apresentacao.md`, `docs/evidencias/README.md`, `docs/infra-u2/story-map.md`, `docs/infra-u2/tdd.md`.
+   - `docs/infra-u2/checklist.md`, `docs/evidencias/README.md`, `docs/infra-u2/story-map.md`, `docs/infra-u2/tdd.md`.
 
 ---
 
@@ -1685,7 +1684,7 @@ A matriz abaixo confronta exaustivamente cada um dos 43 requisitos mandatórios 
 | **DOC.2** | **Documentação** | Tabela das 12 Decisões Arquiteturais Justificadas | `README.md` (Seção 5) | 12 decisões arquiteturais mapeadas com escolha, alternativas e justificativa técnica detalhada. | **ATENDIDO** |
 | **DOC.3** | **Documentação** | Declaração transparente do uso de IA e validação humana | `README.md` (Seção 6) | Modelos utilizados, prompts principais, partes revisadas e síntese da auditoria adversarial. | **ATENDIDO** |
 | **DOC.4** | **Documentação** | Catálogo de Evidências Centralizado | `docs/evidencias/README.md` | 9 categorias indexando 201 testes unitários, 39 de integração, 54 em C, 7 em Python, Compose e CI. | **ATENDIDO** |
-| **DOC.5** | **Documentação** | Roteiro Estruturado de Apresentação em Sala | `docs/infra-u2/apresentacao.md` | Planejamento de 15 a 20 min com divisão entre os 5 integrantes, guia ao vivo e FAQ da banca. | **ATENDIDO** |
+| **DOC.5** | **Documentação** | Planejamento da Apresentação em Sala | `docs/infra-u2/divisao-tarefas.md` | Planejamento de 15 a 20 min com divisão entre os 5 integrantes e demonstração ao vivo. | **ATENDIDO** |
 | **DOC.6** | **Documentação** | Matriz de Conformidade e Checklist de Entrega | `docs/infra-u2/checklist.md` | 43 requisitos confrontados com código e saídas empíricas; segregação de ações externas. | **ATENDIDO** |
 | **DOC.7** | **Documentação** | Governança do Registro de Progresso | `docs/infra-u2/progresso.md` | Histórico com Etapas 0 a 9 concluídas; parecer formal e resumos padronizados de fechamento. | **ATENDIDO** |
 
