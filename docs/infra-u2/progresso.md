@@ -1339,7 +1339,7 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
      - Red: `UnsupportedOperationException: Pendente para Etapa 5 (H3)` em 5 testes de `JdbcEstoqueStorageTest`. Commit `2b07ecc`.
      - Green: Implementação de deleção atômica por subquery em `JdbcEstoqueStorage` e método `removerBolsa` em `EstoqueService`. Commits `9a4b69b` e `26b19d9`.
    - **Suíte Consolidada Atual:**
-     - 190 testes Java unitários e de caracterização aprovados (Surefire, 0 falhas, 0 erros).
+     - 193 testes Java unitários e de caracterização aprovados (Surefire, 0 falhas, 0 erros).
      - 54 asserções em C aprovadas com sanitizers ativos e zero vazamento de memória (AED U1).
      - 7 testes Python de benchmark aprovados e validação estatística consistente (SO U1).
 
@@ -1389,11 +1389,12 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
 - **Mudanças:** 
   - `.github/workflows/ci.yml`: Ativação do job `deploy-render` exclusivamente na branch `main` (`if: github.ref == 'refs/heads/main'`), encadeado formalmente aos 5 gates obrigatórios anteriores (`needs: [check-benchmark, test-c, test-java-unit, test-java-integration, build-docker-smoke]`), com disparo protegido via `curl -sS` repassando o commit SHA validado pelo parâmetro `ref` (`${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}`) e verificação da URL pública via Actuator Health.
   - `render.yaml`: Atualização com blueprint oficial declarativo contendo `autoDeploy: false`, banco gerenciado PostgreSQL 16 (`rotavital-db`), web service `rota-vital` rodando Docker sob perfil `infra` (`SPRING_PROFILES_ACTIVE=infra`), injeção de `DATABASE_URL` via `fromDatabase` e healthcheck no `/actuator/health`.
-  - `src/main/java/com/rotavital/config/DatabaseConfig.java`: Implementação do adaptador de DataSource sob o perfil `infra` para conversão de `DATABASE_URL` nos formatos `postgres://` e `postgresql://` do Render para JDBC padrão.
-  - `src/test/java/com/rotavital/config/DatabaseConfigTest.java`: Adição de 7 testes unitários cobrindo o conversor de URLs e inicialização condicional no Spring.
+  - `src/main/java/com/rotavital/config/DatabaseConfig.java`: Implementação do adaptador de DataSource sob o perfil `infra` para conversão de `DATABASE_URL` nos formatos `postgres://` e `postgresql://` do Render para JDBC padrão, com parser customizado resiliente a hostnames com underscore (evitando `null:5432`), senhas com caracteres especiais codificados, literal `+`, suporte a IPv6 e fallbacks seguros para porta (5432) e banco (`/rotavital`).
+  - `src/main/resources/application-infra.properties`: Ativação explícita de `spring.flyway.clean-disabled=true`, garantindo a aplicação efetiva da salvaguarda contra comandos destrutivos do Flyway.
+  - `src/test/java/com/rotavital/config/DatabaseConfigTest.java`: Adição de 10 testes unitários com asserção aprofundada nas propriedades de conexão (`jdbcUrl`, `username`, `password` via `HikariDataSource`).
   - Criação da branch de trabalho `etapa/e3-deploy-render` e documentação detalhada dos procedimentos de rollback e governança de migrações Flyway (expand/contract).
 - **Verificação:** 
-  - `.\mvnw.cmd test`: **190/190 testes Java unitários e de caracterização aprovados** (Surefire, 0 falhas, 0 erros, tempo ~24.7s).
+  - `.\mvnw.cmd test`: **193/193 testes Java unitários e de caracterização aprovados** (Surefire, 0 falhas, 0 erros, tempo ~20.3s).
   - `mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test`: **54/54 asserções em C aprovadas** (23 na lista encadeada e 31 na fila FIFO, zero memory leaks).
   - `python -m unittest discover -s bench -p 'test_*.py'`: **7/7 testes de benchmark Python aprovados**.
   - `python bench/plot_speedup.py --check`: **Consistência de 8 configurações estatísticas canônicas confirmada**.
