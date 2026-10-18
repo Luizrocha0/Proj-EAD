@@ -180,4 +180,37 @@ class DatabaseConfigTest {
         String url = "postgres://rotavital:pass@[::1/rotavital";
         assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource(url));
     }
+
+    @Test
+    @DisplayName("Deve lançar exceção para IPv6 com caracteres espúrios após colchetes")
+    void deveLancarExcecaoParaIpv6ComCaracteresInvalidosAposColchetes() {
+        String url = "postgres://rotavital:pass@[::1]junk/rotavital";
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource(url));
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar esquemas JDBC não PostgreSQL")
+    void deveRejeitarEsquemaJdbcNaoPostgresql() {
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("jdbc:mysql://localhost:3306/rotavital"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("jdbc:oracle:thin:@localhost:1521:xe"));
+    }
+
+    @Test
+    @DisplayName("Deve validar limites da porta (1 a 65535)")
+    void deveValidarLimitesDaPorta() {
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("postgres://rotavital:pass@localhost:0/db"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("postgres://rotavital:pass@localhost:65536/db"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("postgres://rotavital:pass@localhost:-10/db"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("postgres://rotavital:pass@localhost:invalid/db"));
+    }
+
+    @Test
+    @DisplayName("Deve remover fragmentos URI e normalizar múltiplos slashes no caminho")
+    void deveRemoverFragmentoENormalizarSlashes() {
+        String urlComFragmento = "postgres://rotavital:pass@localhost:5432///rotavital_prod///?sslmode=disable#anchor";
+        DataSource ds = DatabaseConfig.parseAndBuildDataSource(urlComFragmento);
+        assertNotNull(ds);
+        com.zaxxer.hikari.HikariDataSource hds = (com.zaxxer.hikari.HikariDataSource) ds;
+        assertEquals("jdbc:postgresql://localhost:5432/rotavital_prod?sslmode=disable", hds.getJdbcUrl());
+    }
 }

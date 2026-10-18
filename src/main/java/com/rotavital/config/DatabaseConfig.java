@@ -43,20 +43,30 @@ public class DatabaseConfig {
         String trimmed = dbUrl.trim();
         String lowerTrimmed = trimmed.toLowerCase();
 
-        if (lowerTrimmed.startsWith("jdbc:")) {
+        if (lowerTrimmed.startsWith("jdbc:postgresql:") || lowerTrimmed.startsWith("jdbc:postgres:")) {
             return DataSourceBuilder.create()
                     .url(trimmed)
                     .driverClassName("org.postgresql.Driver")
                     .build();
         }
 
+        if (lowerTrimmed.startsWith("jdbc:")) {
+            throw new IllegalArgumentException("Esquema JDBC não suportado na DATABASE_URL (esperado 'jdbc:postgresql:'): " + dbUrl);
+        }
+
         if (!lowerTrimmed.startsWith("postgres://") && !lowerTrimmed.startsWith("postgresql://")) {
-            throw new IllegalArgumentException("Esquema de URL não suportado na DATABASE_URL (esperado 'postgres://', 'postgresql://' ou 'jdbc:'): " + dbUrl);
+            throw new IllegalArgumentException("Esquema de URL não suportado na DATABASE_URL (esperado 'postgres://', 'postgresql://' ou 'jdbc:postgresql://'): " + dbUrl);
         }
 
         try {
             // Remove prefixos postgres:// ou postgresql:// (case-insensitive)
             String withoutScheme = trimmed.replaceFirst("^(?i)postgres(?:ql)?://", "");
+
+            // Remover fragmento URI (#...) se presente antes do processamento de query e path
+            int fragmentIndex = withoutScheme.indexOf('#');
+            if (fragmentIndex >= 0) {
+                withoutScheme = withoutScheme.substring(0, fragmentIndex);
+            }
 
             // Separar query string (?...) se houver
             String query = null;
@@ -73,8 +83,9 @@ public class DatabaseConfig {
             if (slashIndex >= 0) {
                 authority = withoutScheme.substring(0, slashIndex);
                 String subPath = withoutScheme.substring(slashIndex);
-                if (!subPath.isBlank() && !subPath.equals("/")) {
-                    path = subPath;
+                String cleanPath = subPath.replaceAll("^/+", "/").replaceAll("/+$", "");
+                if (!cleanPath.isBlank() && !cleanPath.equals("/")) {
+                    path = cleanPath;
                 }
             }
 
@@ -106,10 +117,14 @@ public class DatabaseConfig {
                     throw new IllegalArgumentException("Endereço IPv6 com colchetes inválidos na DATABASE_URL: " + dbUrl);
                 }
                 host = hostPort.substring(0, closingBracket + 1);
-                if (closingBracket + 1 < hostPort.length() && hostPort.charAt(closingBracket + 1) == ':') {
-                    String portStr = hostPort.substring(closingBracket + 2);
-                    if (!portStr.isBlank()) {
-                        port = Integer.parseInt(portStr);
+                if (closingBracket + 1 < hostPort.length()) {
+                    if (hostPort.charAt(closingBracket + 1) == ':') {
+                        String portStr = hostPort.substring(closingBracket + 2);
+                        if (!portStr.isBlank()) {
+                            port = parsePort(portStr, dbUrl);
+                        }
+                    } else {
+                        throw new IllegalArgumentException("Formato inválido após colchetes de IPv6 na DATABASE_URL (esperado ':porta' ou fim da string): " + dbUrl);
                     }
                 }
             } else {
@@ -118,7 +133,7 @@ public class DatabaseConfig {
                     host = hostPort.substring(0, lastColon);
                     String portStr = hostPort.substring(lastColon + 1);
                     if (!portStr.isBlank()) {
-                        port = Integer.parseInt(portStr);
+                        port = parsePort(portStr, dbUrl);
                     }
                 } else {
                     host = hostPort;
@@ -150,6 +165,18 @@ public class DatabaseConfig {
             throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("Erro ao processar DATABASE_URL: " + dbUrl, e);
+        }
+    }
+
+    private static int parsePort(String portStr, String dbUrl) {
+        try {
+            int port = Integer.parseInt(portStr.trim());
+            if (port < 1 || port > 65535) {
+                throw new IllegalArgumentException("Porta fora do intervalo permitido (1-65535) na DATABASE_URL: " + dbUrl);
+            }
+            return port;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Porta numérica inválida na DATABASE_URL: " + dbUrl, e);
         }
     }
 

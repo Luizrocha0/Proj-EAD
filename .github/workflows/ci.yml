@@ -255,6 +255,7 @@ jobs:
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
+          RENDER_DEPLOY_HOOK_URL=$(echo "$RENDER_DEPLOY_HOOK_URL" | tr -d '[:space:]')
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "❌ RENDER_DEPLOY_HOOK_URL não configurado."
             exit 1
@@ -272,14 +273,15 @@ jobs:
         env:
           RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         run: |
-          APP_URL="${RENDER_APP_URL:-https://rota-vital.onrender.com}"
+          APP_URL=$(echo "${RENDER_APP_URL:-https://rota-vital.onrender.com}" | tr -d '[:space:]')
           APP_URL="${APP_URL%/}"
           echo "Aguardando Render atualizar a instância (limite de 5 minutos)..."
           MAX_RETRIES=30
           INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            HEALTH_RESP=$(curl -s "$APP_URL/actuator/health" || echo "")
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/actuator/health" || echo "000")
+            RESP=$(curl -s -w "\n%{http_code}" "$APP_URL/actuator/health" 2>/dev/null || printf "\n000")
+            STATUS=$(printf "%s" "$RESP" | tail -n1)
+            HEALTH_RESP=$(printf "%s" "$RESP" | sed '$d')
             if [ "$STATUS" = "200" ]; then
               echo "✅ Aplicação em produção respondendo (HTTP 200) — $APP_URL"
               echo "Detalhes do Actuator Health: $HEALTH_RESP"
