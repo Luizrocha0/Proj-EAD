@@ -95,7 +95,6 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 - `docs/speedup.png`: Gráfico consolidado oficial de speedup de SO U1.
 - `docs/RotaVital_Threads_Relatorio.pdf`: Relatório formal em PDF de 5 páginas da atividade de SO U1.
 - `docs/equivalencia-u1.md`: Guia de equivalência e contratos pedagógicos C $\leftrightarrow$ Java da entrega de AED U1.
-- `PLANO_ENTREGA_AED_SO.md`: Documento de planejamento conjunto inicial de AED e SO definindo a visão de unificação do backend.
 - `README.md`: Documentação geral da base legada com instruções e visão geral do projeto.
 
 #### 1.6. Infraestrutura Atual (Legado)
