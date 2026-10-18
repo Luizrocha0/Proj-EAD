@@ -1383,18 +1383,18 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
 
 ---
 
-### 5. Resumo Padronizado de Fechamento da Etapa 7 (Protocolo Obrigatório)
+### 5. Resumo Padronizado de Fechamento da Etapa 7 (Protocolo Obrigatório — Revisão Adversarial R2)
 
-- **Etapa e estado:** Etapa 7 (E3: Branches, GitHub Flow e Deploy Automatizado) — **Concluída**.
+- **Etapa e estado:** Etapa 7 (E3: Branches, GitHub Flow e Deploy Automatizado) — **Concluída e Blindada (Rodada 2)**.
 - **Mudanças:** 
-  - `.github/workflows/ci.yml`: Ativação do job `deploy-render` exclusivamente na branch `main` (`if: github.ref == 'refs/heads/main'`), encadeado formalmente aos 5 gates obrigatórios anteriores (`needs: [check-benchmark, test-c, test-java-unit, test-java-integration, build-docker-smoke]`), com disparo protegido via `curl -sS` repassando o commit SHA validado pelo parâmetro `ref` (`${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}`) e verificação da URL pública via Actuator Health.
+  - `.github/workflows/ci.yml`: Ativação do job `deploy-render` exclusivamente na branch `main` (`if: github.ref == 'refs/heads/main'`), encadeado formalmente aos 5 gates obrigatórios anteriores (`needs: [check-benchmark, test-c, test-java-unit, test-java-integration, build-docker-smoke]`), com disparo protegido via `curl -sS` repassando o commit SHA validado pelo parâmetro `ref` (`${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}`), captura da resposta do deploy hook (`DEPLOY_RESP`), fallback automático para a URL pública canônica (`APP_URL="${RENDER_APP_URL:-https://rota-vital.onrender.com}"`) prevenindo falha falsa caso o segredo `RENDER_APP_URL` não esteja definido, e verificação aprofundada da presença do componente PostgreSQL (`"db"`) no Actuator Health.
   - `render.yaml`: Atualização com blueprint oficial declarativo contendo `autoDeploy: false`, banco gerenciado PostgreSQL 16 (`rotavital-db`), web service `rota-vital` rodando Docker sob perfil `infra` (`SPRING_PROFILES_ACTIVE=infra`), injeção de `DATABASE_URL` via `fromDatabase` e healthcheck no `/actuator/health`.
-  - `src/main/java/com/rotavital/config/DatabaseConfig.java`: Implementação do adaptador de DataSource sob o perfil `infra` para conversão de `DATABASE_URL` nos formatos `postgres://` e `postgresql://` do Render para JDBC padrão, com parser customizado resiliente a hostnames com underscore (evitando `null:5432`), senhas com caracteres especiais codificados, literal `+`, suporte a IPv6 e fallbacks seguros para porta (5432) e banco (`/rotavital`).
+  - `src/main/java/com/rotavital/config/DatabaseConfig.java`: Blindagem completa do adaptador de DataSource sob o perfil `infra`: validação fail-fast de esquemas (`postgres://`, `postgresql://`, `jdbc:`), bloqueando esquemas espúrios (`http://`, `mysql://`, etc.); suporte a esquemas case-insensitive (RFC 3986); proteção contra `NullBean` no contexto Spring via `@ConditionalOnExpression("!'${DATABASE_URL:}'.trim().isEmpty()")` caso `DATABASE_URL` esteja vazia; suporte a hostnames com underscore (evitando `null:5432`), senhas com caracteres especiais e literal `+`; blindagem em endereços IPv6 com validação de colchetes e tratamento seguro de porta ausente pós-dois pontos (`[::1]:`), com fallbacks para porta 5432 e banco `/rotavital`.
   - `src/main/resources/application-infra.properties`: Ativação explícita de `spring.flyway.clean-disabled=true`, garantindo a aplicação efetiva da salvaguarda contra comandos destrutivos do Flyway.
-  - `src/test/java/com/rotavital/config/DatabaseConfigTest.java`: Adição de 10 testes unitários com asserção aprofundada nas propriedades de conexão (`jdbcUrl`, `username`, `password` via `HikariDataSource`).
+  - `src/test/java/com/rotavital/config/DatabaseConfigTest.java`: Expansão para 14 testes unitários rigorosos cobrindo conversão de URL, esquemas não suportados, esquemas em maiúsculas, robustez de IPv6, caracteres especiais e injeção Spring.
   - Criação da branch de trabalho `etapa/e3-deploy-render` e documentação detalhada dos procedimentos de rollback e governança de migrações Flyway (expand/contract).
 - **Verificação:** 
-  - `.\mvnw.cmd test`: **193/193 testes Java unitários e de caracterização aprovados** (Surefire, 0 falhas, 0 erros, tempo ~20.3s).
+  - `.\mvnw.cmd test`: **197/197 testes Java unitários e de caracterização aprovados** (Surefire, 0 falhas, 0 erros, tempo ~20.9s).
   - `mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test`: **54/54 asserções em C aprovadas** (23 na lista encadeada e 31 na fila FIFO, zero memory leaks).
   - `python -m unittest discover -s bench -p 'test_*.py'`: **7/7 testes de benchmark Python aprovados**.
   - `python bench/plot_speedup.py --check`: **Consistência de 8 configurações estatísticas canônicas confirmada**.

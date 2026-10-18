@@ -129,4 +129,55 @@ class DatabaseConfigTest {
         DataSource ds = config.dataSourceFromDatabaseUrl(env);
         assertNull(ds);
     }
+
+    @Test
+    @DisplayName("Deve lançar exceção para esquemas não suportados (ex: http, mysql, redis)")
+    void deveLancarExcecaoParaEsquemasNaoSuportados() {
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("http://localhost:5432/rotavital"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("mysql://root:secret@localhost:3306/db"));
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource("redis://localhost:6379"));
+    }
+
+    @Test
+    @DisplayName("Deve suportar esquemas em maiúsculas ou mistos (RFC 3986)")
+    void deveSuportarEsquemaEmMaiusculas() {
+        String urlPostgresUpper = "POSTGRES://rotavital:senha123@dpg-srv-1:5432/rotavital_prod";
+        DataSource ds1 = DatabaseConfig.parseAndBuildDataSource(urlPostgresUpper);
+        assertNotNull(ds1);
+        com.zaxxer.hikari.HikariDataSource hds1 = (com.zaxxer.hikari.HikariDataSource) ds1;
+        assertEquals("jdbc:postgresql://dpg-srv-1:5432/rotavital_prod", hds1.getJdbcUrl());
+        assertEquals("rotavital", hds1.getUsername());
+
+        String urlPostgresqlUpper = "PostgreSQL://rotavital:senha123@dpg-srv-2:5432/rotavital_db";
+        DataSource ds2 = DatabaseConfig.parseAndBuildDataSource(urlPostgresqlUpper);
+        assertNotNull(ds2);
+        com.zaxxer.hikari.HikariDataSource hds2 = (com.zaxxer.hikari.HikariDataSource) ds2;
+        assertEquals("jdbc:postgresql://dpg-srv-2:5432/rotavital_db", hds2.getJdbcUrl());
+
+        String urlJdbcUpper = "JDBC:postgresql://localhost:5432/rotavital";
+        DataSource ds3 = DatabaseConfig.parseAndBuildDataSource(urlJdbcUpper);
+        assertNotNull(ds3);
+        com.zaxxer.hikari.HikariDataSource hds3 = (com.zaxxer.hikari.HikariDataSource) ds3;
+        assertEquals("JDBC:postgresql://localhost:5432/rotavital", hds3.getJdbcUrl());
+    }
+
+    @Test
+    @DisplayName("Deve suportar IPv6 com dois pontos sem porta definida caindo na porta padrão 5432")
+    void deveSuportarIpv6ComDoisPontosSemPorta() {
+        String url = "postgres://rotavital:pass@[::1]:/rotavital";
+        DataSource ds = DatabaseConfig.parseAndBuildDataSource(url);
+
+        assertNotNull(ds);
+        com.zaxxer.hikari.HikariDataSource hds = (com.zaxxer.hikari.HikariDataSource) ds;
+        assertEquals("jdbc:postgresql://[::1]:5432/rotavital", hds.getJdbcUrl());
+        assertEquals("rotavital", hds.getUsername());
+        assertEquals("pass", hds.getPassword());
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção para IPv6 com colchete não fechado")
+    void deveLancarExcecaoParaIpv6SemFechamentoDeColchete() {
+        String url = "postgres://rotavital:pass@[::1/rotavital";
+        assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource(url));
+    }
 }
