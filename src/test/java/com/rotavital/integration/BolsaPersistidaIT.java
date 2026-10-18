@@ -58,17 +58,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         assertFalse(applicationContext.isActive(), "Contexto Spring original deve ter sido encerrado");
 
         // 3. Recria o contexto Spring do zero, apontando para o mesmo banco PostgreSQL
-        org.springframework.boot.builder.SpringApplicationBuilder builder =
-                new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
-                        .profiles("infra")
-                        .properties(
-                                "spring.datasource.url=" + postgres.getJdbcUrl(),
-                                "spring.datasource.username=" + postgres.getUsername(),
-                                "spring.datasource.password=" + postgres.getPassword(),
-                                "spring.flyway.enabled=true"
-                        );
-
-        try (ConfigurableApplicationContext novoContexto = builder.run()) {
+        try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive(), "Novo contexto Spring deve estar ativo");
 
             // 4. Recupera o storage a partir do novo contexto
@@ -107,17 +97,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         assertFalse(applicationContext.isActive());
 
         // Recria o contexto do zero apontando para o mesmo banco
-        org.springframework.boot.builder.SpringApplicationBuilder builder =
-                new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
-                        .profiles("infra")
-                        .properties(
-                                "spring.datasource.url=" + postgres.getJdbcUrl(),
-                                "spring.datasource.username=" + postgres.getUsername(),
-                                "spring.datasource.password=" + postgres.getPassword(),
-                                "spring.flyway.enabled=true"
-                        );
-
-        try (ConfigurableApplicationContext novoContexto = builder.run()) {
+        try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive());
 
             EstoqueStorage novoStorage = novoContexto.getBean(EstoqueStorage.class);
@@ -177,17 +157,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         assertFalse(applicationContext.isActive(), "Contexto original deve estar encerrado");
 
         // 3. Recria o contexto Spring do zero conectando ao mesmo PostgreSQL
-        org.springframework.boot.builder.SpringApplicationBuilder builder =
-                new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
-                        .profiles("infra")
-                        .properties(
-                                "spring.datasource.url=" + postgres.getJdbcUrl(),
-                                "spring.datasource.username=" + postgres.getUsername(),
-                                "spring.datasource.password=" + postgres.getPassword(),
-                                "spring.flyway.enabled=true"
-                        );
-
-        try (ConfigurableApplicationContext novoContexto = builder.run()) {
+        try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive());
 
             EstoqueStorage novoStorage = novoContexto.getBean(EstoqueStorage.class);
@@ -207,7 +177,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         }
 
         // 4. Recria um terceiro contexto Spring para atestar que a exclusão total é definitiva e durável
-        try (ConfigurableApplicationContext terceiroContexto = builder.run()) {
+        try (ConfigurableApplicationContext terceiroContexto = criarNovoContexto()) {
             assertTrue(terceiroContexto.isActive());
 
             EstoqueStorage terceiroStorage = terceiroContexto.getBean(EstoqueStorage.class);
@@ -217,5 +187,17 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
             assertTrue(terceiroStorage.buscarPorId("BOLSA-RESTART-OUTRA").isPresent(),
                     "Bolsa não removida deve permanecer intacta");
         }
+    }
+
+    private ConfigurableApplicationContext criarNovoContexto() {
+        return new org.springframework.boot.builder.SpringApplicationBuilder(com.rotavital.RotaVitalApplication.class)
+                .profiles("infra")
+                .run(
+                        "--spring.datasource.url=" + postgres.getJdbcUrl(),
+                        "--spring.datasource.username=" + postgres.getUsername(),
+                        "--spring.datasource.password=" + postgres.getPassword(),
+                        "--spring.flyway.enabled=true",
+                        "--spring.flyway.clean-disabled=false"
+                );
     }
 }
