@@ -200,7 +200,58 @@ class ListaEstoqueTest {
             assertTrue(lista.consultar("BOLSA-004").isPresent());
             assertTrue(lista.consultar("BOLSA-002").isPresent());
         }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId deve delegar para remover com sucesso e integridade")
+        void deveRemoverPorIdComSucesso() {
+            assertTrue(lista.removerPorId("BOLSA-005"), "Deve remover a cabeça via removerPorId");
+            assertEquals(4, lista.getTamanho());
+            assertTrue(lista.consultar("BOLSA-005").isEmpty());
+
+            assertFalse(lista.removerPorId("BOLSA-999"), "Deve retornar false para id inexistente");
+            assertEquals(4, lista.getTamanho());
+        }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId com duplicatas deve remover a ocorrência mais recente da cabeça")
+        void deveRemoverPorIdOcorrenciaMaisRecenteSobDuplicatas() {
+            Bolsa bolsaDupRecente = new Bolsa("BOLSA-001", "O+", 490.0,
+                    LocalDate.of(2026, 9, 25), LocalDate.of(2026, 11, 25), "Doador Recente");
+            lista.inserir(bolsaDupRecente); // inserido na cabeça
+            assertEquals(6, lista.getTamanho());
+
+            assertTrue(lista.removerPorId("BOLSA-001"), "Primeira remoção deve remover a mais recente");
+            assertEquals(5, lista.getTamanho());
+
+            Optional<Bolsa> restante = lista.consultar("BOLSA-001");
+            assertTrue(restante.isPresent());
+            assertEquals("João Silva", restante.get().getDoador(), "A ocorrência original deve permanecer");
+        }
+
+        @Test
+        @DisplayName("H3 / T3.1: removerPorId com duplicatas no meio da lista deve remover a ocorrência mais recente e manter anterior")
+        void deveRemoverPorIdDuplicataNoMeioDaLista() {
+            Bolsa b003Recente = new Bolsa("BOLSA-003", "B+", 420.0,
+                    LocalDate.of(2026, 9, 20), LocalDate.of(2026, 11, 20), "Carlos Oliveira Recente");
+            Bolsa bCabeca = new Bolsa("BOLSA-999", "A+", 450.0,
+                    LocalDate.of(2026, 9, 21), LocalDate.of(2026, 11, 21), "Doador Cabeca");
+            lista.inserir(b003Recente);
+            lista.inserir(bCabeca);
+            assertEquals(7, lista.getTamanho());
+
+            assertTrue(lista.removerPorId("BOLSA-003"), "Deve remover a duplicata mais recente no meio da cadeia");
+            assertEquals(6, lista.getTamanho());
+
+            Optional<Bolsa> cabeca = lista.consultar("BOLSA-999");
+            assertTrue(cabeca.isPresent());
+
+            Optional<Bolsa> restante = lista.consultar("BOLSA-003");
+            assertTrue(restante.isPresent());
+            assertEquals("Carlos Oliveira", restante.get().getDoador());
+            assertEquals(400.0, restante.get().getVolumeMl());
+        }
     }
+
 
     /**
      * Insere as 5 bolsas das fixtures na ordem: 001, 002, 003, 004, 005.

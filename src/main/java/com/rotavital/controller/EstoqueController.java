@@ -1,11 +1,13 @@
 package com.rotavital.controller;
 
 import com.rotavital.domain.Bolsa;
+import com.rotavital.dto.BolsaRequestDTO;
 import com.rotavital.service.EstoqueService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,20 +30,24 @@ public class EstoqueController {
      * Body JSON: { "id", "tipoSanguineo", "volumeMl", "dataColeta", "validade", "doador" }
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> adicionar(@RequestBody Map<String, String> body) {
-        Bolsa bolsa = new Bolsa(
-                body.get("id"),
-                body.get("tipoSanguineo"),
-                Double.parseDouble(body.getOrDefault("volumeMl", "450.0")),
-                LocalDate.parse(body.get("dataColeta")),
-                LocalDate.parse(body.get("validade")),
-                body.get("doador")
-        );
-        estoqueService.adicionar(bolsa);
-        return ResponseEntity.ok(Map.of(
-                "mensagem", "Bolsa adicionada ao estoque",
-                "tamanho", estoqueService.tamanho()
-        ));
+    public ResponseEntity<?> adicionar(@RequestBody BolsaRequestDTO body) {
+        if (body == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensagem", "Dados inválidos: corpo da requisição não pode ser nulo"
+            ));
+        }
+        try {
+            Bolsa bolsa = body.toDomain();
+            estoqueService.adicionar(bolsa);
+            return ResponseEntity.ok(Map.of(
+                    "mensagem", "Bolsa adicionada ao estoque",
+                    "tamanho", estoqueService.tamanho()
+            ));
+        } catch (IllegalArgumentException | java.time.format.DateTimeParseException | NullPointerException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensagem", "Dados inválidos: " + e.getMessage()
+            ));
+        }
     }
 
     /**
@@ -49,7 +55,10 @@ public class EstoqueController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> consultar(@PathVariable String id) {
-        return estoqueService.consultar(id)
+        if (id == null || id.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return estoqueService.consultar(id.trim())
                 .map(bolsa -> ResponseEntity.ok((Object) Map.of(
                         "id", bolsa.getId(),
                         "tipoSanguineo", bolsa.getTipoSanguineo(),
@@ -66,7 +75,10 @@ public class EstoqueController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> remover(@PathVariable String id) {
-        boolean removido = estoqueService.remover(id);
+        if (id == null || id.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean removido = estoqueService.removerBolsa(id.trim());
         if (removido) {
             return ResponseEntity.ok(Map.of(
                     "mensagem", "Bolsa removida",
@@ -81,21 +93,25 @@ public class EstoqueController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> listar() {
-        Bolsa[] bolsas = estoqueService.listarTodas();
+        List<Bolsa> bolsas = estoqueService.listarEstoque();
         var lista = new java.util.ArrayList<Map<String, Object>>();
-        for (Bolsa b : bolsas) {
-            lista.add(Map.of(
-                    "id", b.getId(),
-                    "tipoSanguineo", b.getTipoSanguineo(),
-                    "volumeMl", b.getVolumeMl(),
-                    "dataColeta", b.getDataColeta().toString(),
-                    "validade", b.getValidade().toString(),
-                    "doador", b.getDoador()
-            ));
+        if (bolsas != null) {
+            for (Bolsa b : bolsas) {
+                if (b != null) {
+                    lista.add(Map.of(
+                            "id", b.getId(),
+                            "tipoSanguineo", b.getTipoSanguineo(),
+                            "volumeMl", b.getVolumeMl(),
+                            "dataColeta", b.getDataColeta().toString(),
+                            "validade", b.getValidade().toString(),
+                            "doador", b.getDoador()
+                    ));
+                }
+            }
         }
         return ResponseEntity.ok(Map.of(
                 "bolsas", lista,
-                "tamanho", estoqueService.tamanho()
+                "tamanho", lista.size()
         ));
     }
 }

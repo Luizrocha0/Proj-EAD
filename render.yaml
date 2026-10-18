@@ -1,10 +1,20 @@
-# ─── Render Blueprint — Deploy automático ───
+# ─── Render Blueprint — Deploy Automatizado ───
 # Docs: https://render.com/docs/blueprint-spec
 #
-# Para fazer o deploy:
+# Para provisionar a infraestrutura:
 # 1. Acesse https://dashboard.render.com/select-repo?type=blueprint
 # 2. Conecte o repositório Luizrocha0/Proj-EAD
-# 3. Clique em "Apply" — o Render cria tudo automaticamente
+# 3. Clique em "Apply" — o Render provisiona o PostgreSQL 16 e o Web Service
+# 4. Obtenha o Deploy Hook URL no painel do Web Service e configure
+#    a secret RENDER_DEPLOY_HOOK_URL no repositório GitHub para o CI/CD.
+
+databases:
+  - name: rotavital-db
+    databaseName: rotavital
+    user: rotavital
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: [] # Acesso restrito à rede interna do Render
 
 services:
   - type: web
@@ -13,8 +23,14 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     branch: main
-    autoDeploy: false
+    autoDeploy: false # Deploy controlado exclusivamente pelo pipeline de CI/CD
     healthCheckPath: /actuator/health
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: infra
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rotavital-db
+          property: connectionString
       - key: JAVA_OPTS
         value: -Xmx256m

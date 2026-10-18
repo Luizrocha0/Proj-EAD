@@ -1,56 +1,95 @@
 package com.rotavital.service;
 
-import com.rotavital.aed.u1.ListaEstoque;
 import com.rotavital.domain.Bolsa;
+import com.rotavital.storage.EstoqueStorage;
+import com.rotavital.storage.ListaEstoqueStorage;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Serviço de aplicação para gestão do estoque de bolsas de sangue.
- * Delega operações para a estrutura AED real ({@link ListaEstoque}).
+ * Desacoplado via {@link EstoqueStorage}.
  *
- * Controllers apenas chamam este serviço — toda lógica reside aqui.
+ * Controllers apenas chamam este serviço — toda lógica de orquestração reside aqui.
  */
 @Service
 public class EstoqueService {
 
-    private final ListaEstoque estoque = new ListaEstoque();
+    private final EstoqueStorage storage;
+
+    public EstoqueService() {
+        this(new ListaEstoqueStorage());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public EstoqueService(EstoqueStorage storage) {
+        this.storage = Objects.requireNonNull(storage, "storage não pode ser nulo");
+    }
+
+    public EstoqueStorage getStorage() {
+        return this.storage;
+    }
 
     /**
-     * Adiciona uma bolsa ao estoque.
+     * Adiciona uma bolsa ao estoque delegando para o storage.
      */
     public void adicionar(Bolsa bolsa) {
-        estoque.inserir(bolsa);
+        Objects.requireNonNull(bolsa, "bolsa não pode ser nula");
+        storage.salvar(bolsa);
     }
 
     /**
-     * Consulta uma bolsa pelo ID.
+     * Consulta uma bolsa pelo ID delegando para o storage.
      */
     public Optional<Bolsa> consultar(String id) {
-        return estoque.consultar(id);
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
+            return Optional.empty();
+        }
+        return storage.buscarPorId(id.trim());
     }
 
     /**
-     * Remove uma bolsa do estoque pelo ID.
+     * Remove uma bolsa do estoque pelo ID delegando para o storage.
      *
      * @return true se encontrada e removida
      */
     public boolean remover(String id) {
-        return estoque.remover(id);
+        if (id == null || id.isBlank() || id.trim().length() > 50) {
+            return false;
+        }
+        return storage.removerPorId(id.trim());
     }
 
     /**
-     * Retorna o tamanho atual do estoque.
+     * Remove uma bolsa do estoque pelo ID delegando para remover (H3).
+     *
+     * @return true se encontrada e removida
+     */
+    public boolean removerBolsa(String id) {
+        return remover(id);
+    }
+
+    /**
+     * Retorna o tamanho atual do estoque delegando para o storage.
      */
     public int tamanho() {
-        return estoque.getTamanho();
+        return storage.tamanho();
     }
 
     /**
-     * Lista todas as bolsas no estoque.
+     * Lista todas as bolsas no estoque delegando para o storage.
      */
     public Bolsa[] listarTodas() {
-        return estoque.toArray();
+        return storage.listarTodas();
+    }
+
+    /**
+     * Lista todas as bolsas no estoque como List delegando para o storage (H2).
+     */
+    public List<Bolsa> listarEstoque() {
+        return storage.listar();
     }
 }

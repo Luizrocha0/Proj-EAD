@@ -117,6 +117,16 @@ public class ListaEstoque {
     }
 
     /**
+     * Remove uma bolsa pelo ID delegando para remover(id) (H3 / T3.1).
+     *
+     * @param id identificador da bolsa
+     * @return true se a bolsa foi encontrada e removida, false caso contrário
+     */
+    public boolean removerPorId(String id) {
+        return remover(id);
+    }
+
+    /**
      * Retorna o tamanho atual da lista.
      * Equivalente C: l->tamanho
      */

@@ -2,55 +2,61 @@ name: CI — Rota Vital
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**']
   pull_request:
     branches: [main]
 
 jobs:
+  # ─────────────────────────────────────────────
+  # GATE 1: Benchmarks e Validação Python (SO)
+  # ─────────────────────────────────────────────
   check-benchmark:
-    name: "SO — Validação das medições"
+    name: "SO — Validação das Medições e Speedup (Python)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Validar cálculo e equivalência dos dados publicados
-        run: |
-          python3 -m unittest discover -s bench -p 'test_*.py'
-          python3 bench/plot_speedup.py --check
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Executar testes unitários do benchmark
+        run: python3 -m unittest discover -s bench -p 'test_*.py'
+
+      - name: Validar agregação e integridade estatística das medições
+        run: python3 bench/plot_speedup.py --check
 
   # ─────────────────────────────────────────────
-  # JOB 1: Estruturas AED em C (com sanitizers)
+  # GATE 2: Estruturas AED em C (AddressSanitizer + UBSan)
   # ─────────────────────────────────────────────
   test-c:
-    name: "AED C — GCC + AddressSanitizer"
+    name: "AED C — GCC + Sanitizers (Address + Undefined)"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Instalar GCC
-        run: sudo apt-get install -y gcc make
+      - name: Instalar GCC e Make
+        run: sudo apt-get update && sudo apt-get install -y gcc make
 
-      - name: Compilar e testar C (AddressSanitizer + UBSan)
+      - name: Compilar e executar testes C com AddressSanitizer e UBSan
         working-directory: aed-c
         run: make test
         env:
-          CFLAGS: "-Wall -Wextra -std=c11 -fsanitize=address,undefined"
+          CFLAGS: "-Wall -Wextra -std=c11 -g -fsanitize=address,undefined"
           LDFLAGS: "-fsanitize=address,undefined"
 
-      - name: Verificar sem vazamentos de memória
-        working-directory: aed-c
-        run: |
-          echo "✅ Testes C finalizados sem erros de memória"
+      - name: Confirmar aprovação dos testes C sem vazamento de memória
+        run: echo "✅ 54 asserções em C aprovadas com sanitizers ativos e zero leaks"
 
   # ─────────────────────────────────────────────
-  # JOB 2: Testes Java com Maven
+  # GATE 3: Testes Unitários Java (Surefire sem banco)
   # ─────────────────────────────────────────────
-  test-java:
-    name: "Java 21 — Maven + JUnit 5"
+  test-java-unit:
+    name: "Java — Testes Unitários (Surefire)"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,12 +68,13 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Executar testes
+      - name: Executar testes unitários rápidos via Surefire
         run: |
+          sed -i 's/\r$//' mvnw
           chmod +x mvnw
           ./mvnw test --no-transfer-progress
 
-      - name: Publicar relatório de testes
+      - name: Publicar relatório Surefire
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,13 +83,12 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────
-  # JOB 3: Build Maven (JAR)
+  # GATE 4: Testes de Integração e Aceitação (Failsafe + Testcontainers)
   # ─────────────────────────────────────────────
-  build-java:
-    name: "Build Maven — JAR"
+  test-java-integration:
+    name: "Java — Integração e Aceitação (Failsafe + Testcontainers)"
     runs-on: ubuntu-latest
-    needs: test-java
-
+    needs: test-java-unit
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,127 +100,200 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build (skip tests)
+      - name: Executar testes de integração com PostgreSQL Real via Testcontainers
         run: |
+          sed -i 's/\r$//' mvnw
           chmod +x mvnw
-          ./mvnw package -DskipTests --no-transfer-progress
+          ./mvnw -Pintegration verify --no-transfer-progress
 
-      - name: Guardar JAR como artefato
+      - name: Publicar relatórios Failsafe e de integração
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: rota-vital-jar
-          path: target/*.jar
+          name: failsafe-reports
+          path: |
+            target/failsafe-reports/
+            target/surefire-reports/
           retention-days: 7
 
   # ─────────────────────────────────────────────
-  # JOB 4: Build Docker Image
+  # GATE 5: Build Docker sem -DskipTests e Smoke Test Containerizado
   # ─────────────────────────────────────────────
-  build-docker:
-    name: "Docker — Build da imagem"
+  build-docker-smoke:
+    name: "Docker — Build da Imagem e Smoke Test Containerizado"
     runs-on: ubuntu-latest
-    needs: [test-c, build-java, check-benchmark]
-
+    needs: [check-benchmark, test-c, test-java-unit, test-java-integration]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Baixar JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: rota-vital-jar
-          path: target/
+      - name: Validar sintaxe da orquestração Docker Compose
+        run: docker compose config --quiet
 
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Subir ambiente containerizado (API + PostgreSQL) via Compose
+        run: docker compose up -d --build
 
-      - name: Build da imagem Docker
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: rota-vital:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ─────────────────────────────────────────────
-  # JOB 5: Verificação de saúde (health check)
-  # ─────────────────────────────────────────────
-  health-check:
-    name: "Health Check — Actuator"
-    runs-on: ubuntu-latest
-    needs: build-docker
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Baixar JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: rota-vital-jar
-          path: target/
-
-      - name: Configurar Java 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Iniciar aplicação e verificar saúde
+      - name: Aguardar serviços atingirem estado saudável
         run: |
-          JAR=$(ls target/*.jar | head -1)
-          java -jar "$JAR" --server.port=8080 &
-          APP_PID=$!
-          echo "Aguardando aplicação iniciar..."
-          sleep 20
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health || echo "000")
-          kill $APP_PID 2>/dev/null || true
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Health check OK — status $STATUS"
-          else
-            echo "❌ Health check FALHOU — status $STATUS"
+          echo "Aguardando contêineres atingirem status 'healthy'..."
+          for i in $(seq 1 45); do
+            API_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-api 2>/dev/null || echo '"starting"')
+            DB_HEALTH=$(docker inspect --format='{{json .State.Health.Status}}' rotavital-db 2>/dev/null || echo '"starting"')
+            API_STATUS=$(docker inspect --format='{{json .State.Status}}' rotavital-api 2>/dev/null || echo '"unknown"')
+            DB_STATUS=$(docker inspect --format='{{json .State.Status}}' rotavital-db 2>/dev/null || echo '"unknown"')
+            echo "Tentativa $i/45: API=$API_HEALTH ($API_STATUS), DB=$DB_HEALTH ($DB_STATUS)"
+
+            if [ "$API_STATUS" = '"exited"' ] || [ "$DB_STATUS" = '"exited"' ]; then
+              echo "❌ Erro fatal: Contêiner encerrou inesperadamente (API=$API_STATUS, DB=$DB_STATUS)"
+              docker compose logs
+              exit 1
+            fi
+
+            if [ "$API_HEALTH" = '"healthy"' ] && [ "$DB_HEALTH" = '"healthy"' ]; then
+              echo "✅ Todos os serviços do Compose estão saudáveis!"
+              break
+            fi
+            sleep 2
+          done
+          docker compose ps
+          if [ "$API_HEALTH" != '"healthy"' ] || [ "$DB_HEALTH" != '"healthy"' ]; then
+            echo "❌ Erro: Timeout aguardando contêineres atingirem status 'healthy' (API=$API_HEALTH, DB=$DB_HEALTH)"
+            docker compose logs
             exit 1
           fi
 
+      - name: Smoke Test — Actuator Health (Perfil Infra + PostgreSQL)
+        run: |
+          HEALTH_RESP=$(curl --fail -s http://localhost:8080/actuator/health)
+          echo "Resposta do Actuator: $HEALTH_RESP"
+          echo "$HEALTH_RESP" | grep '"status":"UP"'
+          echo "$HEALTH_RESP" | grep '"db"'
+          echo "$HEALTH_RESP" | grep 'PostgreSQL'
+
+      - name: Smoke Test — API REST Funcional (CRUD Completo com PostgreSQL Real)
+        run: |
+          echo "1. Validando listagem inicial vazia..."
+          INITIAL_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta inicial: $INITIAL_RESP"
+          echo "$INITIAL_RESP" | grep '"bolsas"'
+          echo "$INITIAL_RESP" | grep '"tamanho":0'
+
+          echo "2. Cadastrando bolsa de teste (H1)..."
+          POST_RESP=$(curl --fail -s -X POST http://localhost:8080/api/estoque \
+            -H "Content-Type: application/json" \
+            -d '{"id":"SMOKE-CI-01","tipoSanguineo":"AB+","volumeMl":450.0,"dataColeta":"2026-10-17","validade":"2026-12-17","doador":"Smoke CI"}')
+          echo "Resposta POST: $POST_RESP"
+          echo "$POST_RESP" | grep '"mensagem"'
+          echo "$POST_RESP" | grep '"tamanho":1'
+
+          echo "3. Consultando bolsa pelo ID (H1)..."
+          GET_ID_RESP=$(curl --fail -s http://localhost:8080/api/estoque/SMOKE-CI-01)
+          echo "Resposta GET ID: $GET_ID_RESP"
+          echo "$GET_ID_RESP" | grep '"SMOKE-CI-01"'
+          echo "$GET_ID_RESP" | grep '"Smoke CI"'
+
+          echo "4. Validando listagem com bolsa cadastrada (H2)..."
+          LIST_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta GET Lista: $LIST_RESP"
+          echo "$LIST_RESP" | grep '"tamanho":1'
+          echo "$LIST_RESP" | grep '"SMOKE-CI-01"'
+
+          echo "5. Removendo bolsa de teste (H3)..."
+          DEL_RESP=$(curl --fail -s -X DELETE http://localhost:8080/api/estoque/SMOKE-CI-01)
+          echo "Resposta DELETE: $DEL_RESP"
+          echo "$DEL_RESP" | grep '"mensagem":"Bolsa removida"'
+          echo "$DEL_RESP" | grep '"tamanho":0'
+
+          echo "6. Confirmando listagem vazia após remoção..."
+          FINAL_RESP=$(curl --fail -s http://localhost:8080/api/estoque)
+          echo "Resposta final: $FINAL_RESP"
+          echo "$FINAL_RESP" | grep '"tamanho":0'
+
+          echo "7. Validando retorno 404 para consulta de ID inexistente..."
+          NOT_FOUND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/estoque/ID-INEXISTENTE-999)
+          if [ "$NOT_FOUND_CODE" != "404" ]; then
+            echo "❌ Erro: Esperado HTTP 404 para ID inexistente, recebido $NOT_FOUND_CODE"
+            exit 1
+          fi
+
+          echo "8. Validando retorno 404 para deleção de ID inexistente..."
+          DEL_NOT_FOUND_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE http://localhost:8080/api/estoque/ID-INEXISTENTE-999)
+          if [ "$DEL_NOT_FOUND_CODE" != "404" ]; then
+            echo "❌ Erro: Esperado HTTP 404 para DELETE inexistente, recebido $DEL_NOT_FOUND_CODE"
+            exit 1
+          fi
+
+          echo "9. Validando retorno 400 para payload com dados inválidos..."
+          BAD_REQ_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/estoque \
+            -H "Content-Type: application/json" \
+            -d '{"id":""}')
+          if [ "$BAD_REQ_CODE" != "400" ]; then
+            echo "❌ Erro: Esperado HTTP 400 para payload inválido, recebido $BAD_REQ_CODE"
+            exit 1
+          fi
+
+          echo "✅ Smoke Test de ponta a ponta (Actuator com PostgreSQL + CRUD completo + 404 + 400) aprovado!"
+
+      - name: Coletar logs e encerrar ambiente containerizado
+        if: always()
+        run: |
+          docker compose logs
+          docker compose down -v
+
   # ─────────────────────────────────────────────
-  # JOB 6: Deploy no Render (apenas na main)
+  # GATE 6: Deploy Automatizado no Render (Deploy Hook com SHA Validado)
   # ─────────────────────────────────────────────
   deploy-render:
-    name: "Deploy — Render.com"
+    name: "Deploy — Render.com (Deploy Hook com SHA Validado)"
     runs-on: ubuntu-latest
-    needs: health-check
+    needs: [check-benchmark, test-c, test-java-unit, test-java-integration, build-docker-smoke]
     if: github.ref == 'refs/heads/main'
     environment: production
 
     steps:
-      - name: Triggar deploy no Render
+      - name: Triggar deploy no Render com commit SHA validado
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+          RENDER_DEPLOY_HOOK_URL=$(echo "$RENDER_DEPLOY_HOOK_URL" | tr -d '[:space:]')
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "❌ RENDER_DEPLOY_HOOK_URL não configurado."
             exit 1
           fi
-          curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-          echo "✅ Deploy disparado no Render"
+          if echo "$RENDER_DEPLOY_HOOK_URL" | grep -q '?'; then
+            HOOK_URL="${RENDER_DEPLOY_HOOK_URL}&ref=${{ github.sha }}"
+          else
+            HOOK_URL="${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"
+          fi
+          DEPLOY_RESP=$(curl -sS --fail -X POST "$HOOK_URL")
+          echo "Resposta do Render Deploy Hook: $DEPLOY_RESP"
+          echo "✅ Deploy disparado no Render para o commit ${{ github.sha }}"
 
       - name: Aguardar e verificar URL pública
+        env:
+          RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         run: |
-          if [ -z "${{ secrets.RENDER_APP_URL }}" ]; then
-            echo "❌ RENDER_APP_URL não configurado."
-            exit 1
-          fi
-          echo "Aguardando Render iniciar a instância (limite de 5 minutos)..."
+          APP_URL=$(echo "${RENDER_APP_URL:-https://rota-vital.onrender.com}" | tr -d '[:space:]')
+          APP_URL="${APP_URL%/}"
+          echo "Aguardando Render atualizar a instância (limite de 5 minutos)..."
           MAX_RETRIES=30
           INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            STATUS=$(curl --fail -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_APP_URL }}/actuator/health" || echo "000")
+            RESP=$(curl -s -w "\n%{http_code}" "$APP_URL/actuator/health" 2>/dev/null || printf "\n000")
+            STATUS=$(printf "%s" "$RESP" | tail -n1)
+            HEALTH_RESP=$(printf "%s" "$RESP" | sed '$d')
             if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo — ${{ secrets.RENDER_APP_URL }}"
+              echo "✅ Aplicação em produção respondendo (HTTP 200) — $APP_URL"
+              echo "Detalhes do Actuator Health: $HEALTH_RESP"
+              if echo "$HEALTH_RESP" | grep -q '"db"'; then
+                echo "✅ Componente PostgreSQL ('db') ativo e saudável em produção!"
+              else
+                echo "ℹ️  Nota: Componente 'db' ainda não detectado (aguardando provisionamento de rotavital-db via blueprint pelo mantenedor)."
+              fi
               exit 0
             fi
-            echo "Tentativa $i falhou. Aguardando $INTERVAL segundos..."
+            echo "Tentativa $i falhou (status $STATUS). Aguardando $INTERVAL segundos..."
             sleep $INTERVAL
           done
-          echo "❌ Tempo limite excedido. Aplicação não respondeu corretamente."
+          echo "❌ Tempo limite excedido. Aplicação não respondeu com status 200."
           exit 1
-

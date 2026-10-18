@@ -1,31 +1,33 @@
-# Build
+# ─── .dockerignore — Rota Vital ───
+
+# Git e CI
+.git
+.github
+
+# Build e binários compilados
 target/
-!target/*.jar
+*.class
+*.jar
+*.war
 
-# IDE
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# IDEs
 .idea/
-*.iml
 .vscode/
-*.classpath
-*.project
-*.settings/
+*.iml
 
-# Sistema
+# Módulos não-Java / Documentação / Scripts
+aed-c/
+bench/
+docs/
+.agents/
+*.md
+*.log
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Git
-.git/
-.gitignore
-
-# Docs e benchmarks (não vão para a imagem)
-docs/
-bench/
-fixtures/
-aed-c/
-
-# Agentes
-.agents/
-
-# Logs
-*.log
