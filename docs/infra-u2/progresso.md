@@ -17,7 +17,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 6** | E2: Integração e Gates na Esteira | **Concluída** | 17/10/2026 |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | **Concluída** | 17/10/2026 |
 | **Etapa 8** | Documentação e Apresentação | **Concluída** | 17/10/2026 |
-| **Etapa 9** | Auditoria Final | **Concluída** | 17/10/2026 |
+| **Etapa 9** | Auditoria Final | **Concluída** | `ed1b5e1` (17/10/2026) |
 
 ---
 
@@ -1527,7 +1527,8 @@ Todas as suítes de teste e verificações estruturais foram reexecutadas e audi
 
 - **Estado:** Concluída
 - **Data de Execução:** 17/10/2026
-- **Commit HEAD Auditado:** `68256a4`
+- **Commit HEAD Auditado Inicial (Início da Etapa 9):** `68256a4`
+- **Commit HEAD Auditado Consolidado (Pós-Revisões R1/R2/R3):** `ed1b5e1`
 - **Ambiente de Execução:** Windows (PowerShell), OpenJDK 25.0.4.1 LTS / Java 21 LTS compatível, Apache Maven 3.9.9 Wrapper, MinGW GCC 6.3.0 (C11), Python 3.11.9, Docker Compose v2.x.
 - **Regra de Integridade:** Validação independente de ponta a ponta sem modificação regressiva de código de produção, testes ou patrimônio histórico da U1.
 
@@ -1592,7 +1593,7 @@ Todas as suítes de validação foram reexecutadas no ambiente local durante a a
     - `com.rotavital.storage.JdbcEstoqueStorageTest`: 25 testes aprovados
     - `com.rotavital.storage.ListaEstoqueStorageTest`: 20 testes aprovados
     - `com.rotavital.util.FuzzyMatcherTest`: 5 testes aprovados
-  - **Status:** `BUILD SUCCESS` (Tempo: 21.028s). Zero falhas, zero regressões.
+  - **Status:** `BUILD SUCCESS` (Tempo verificado: ~18.5s a 24.0s). Zero falhas, zero regressões.
 
 #### 2.2. Testes em C da U1 (GCC MinGW)
 - **Comando:**
@@ -1819,7 +1820,7 @@ Em cumprimento ao protocolo formal estabelecido na Seção 10 do documento de di
    - **3 requisitos classificados como PENDENTE** (restritos estritamente às 3 ações externas que exigem credenciais administrativas do mantenedor: proteção remota da branch `main`, cadastro da secret de deploy no cofre do GitHub e aplicação do blueprint no painel do Render).
    - **0 requisitos classificados como NÃO VERIFICADO** (todos os itens foram sistematicamente inspecionados e confrontados com evidências empíricas).
 3. **Resultados Reais dos Comandos, Testes, Falhas Corrigidas e Regressões:**
-   - Java: 201 testes unitários Surefire aprovados (0 falhas, 0 erros, tempo 24.009s).
+   - Java: 201 testes unitários Surefire aprovados (0 falhas, 0 erros, tempo ~18.5s a 24.0s).
    - Failsafe / Testcontainers: fail-fast comprovado abortando com erro em ausência de Docker, sem mascaramento de falhas.
    - C (AED U1): 54 asserções aprovadas (23 lista, 31 fila) sem erros de memória.
    - Python (SO U1): 7 testes unittest aprovados e 8 configurações estatísticas canônicas confirmadas.
@@ -1843,7 +1844,7 @@ Em cumprimento ao protocolo formal estabelecido na Seção 10 do documento de di
   - Compatibilização multiplataforma das instruções de governança e proteção de branches com scripts nativos tanto para Windows (PowerShell) quanto para Linux/Bash/macOS;
   - Emissão formal da conclusão de auditoria e parecer técnico nos termos dos protocolos das Seções 0 e 10 do documento de diretrizes.
 - **Verificação:** 
-  - `.\mvnw.cmd test`: **201 testes unitários aprovados** (Surefire, 0 falhas, 0 erros, tempo 24.009s).
+  - `.\mvnw.cmd test`: **201 testes unitários aprovados** (Surefire, 0 falhas, 0 erros, tempo ~18.5s a 24.0s).
   - `mingw32-make -C aed-c ... test`: **54 asserções em C aprovadas com sanitizers** (23 lista, 31 fila, 0 erros de memória).
   - `python -m unittest discover -s bench -p 'test_*.py'`: **7 testes de benchmark Python aprovados** (0.001s).
   - `python bench/plot_speedup.py --check`: **8 configurações estatísticas canônicas validadas** (série de 40 medições intacta).
