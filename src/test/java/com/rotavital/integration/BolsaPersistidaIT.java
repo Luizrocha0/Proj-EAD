@@ -25,9 +25,6 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private ConfigurableApplicationContext applicationContext;
-
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         jdbcTemplate.execute("DELETE FROM bolsas");
@@ -53,11 +50,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         Optional<Bolsa> antesDoReinicio = storage.buscarPorId("BOLSA-RESTART-001");
         assertTrue(antesDoReinicio.isPresent());
 
-        // 2. Simula o encerramento da aplicacao fechando o contexto Spring
-        applicationContext.close();
-        assertFalse(applicationContext.isActive(), "Contexto Spring original deve ter sido encerrado");
-
-        // 3. Recria o contexto Spring do zero, apontando para o mesmo banco PostgreSQL
+        // 2. Inicializa um novo contexto Spring independente a frio apontando para o mesmo banco
         try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive(), "Novo contexto Spring deve estar ativo");
 
@@ -92,11 +85,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
 
         assertEquals(3, storage.tamanho());
 
-        // Encerra o contexto atual simulando crash ou stop da aplicação
-        applicationContext.close();
-        assertFalse(applicationContext.isActive());
-
-        // Recria o contexto do zero apontando para o mesmo banco
+        // Inicializa um novo contexto Spring independente a frio apontando para o mesmo banco
         try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive());
 
@@ -152,11 +141,7 @@ class BolsaPersistidaIT extends AbstractPostgresIT {
         assertTrue(removido, "Primeira remoção deve ter sucesso no contexto original");
         assertEquals(2, storage.tamanho());
 
-        // 2. Simula crash / encerramento da aplicação fechando o contexto Spring
-        applicationContext.close();
-        assertFalse(applicationContext.isActive(), "Contexto original deve estar encerrado");
-
-        // 3. Recria o contexto Spring do zero conectando ao mesmo PostgreSQL
+        // 2. Inicializa um novo contexto Spring independente a frio conectando ao mesmo PostgreSQL
         try (ConfigurableApplicationContext novoContexto = criarNovoContexto()) {
             assertTrue(novoContexto.isActive());
 

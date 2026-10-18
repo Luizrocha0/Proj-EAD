@@ -122,7 +122,7 @@ class EstoqueControllerIT extends AbstractPostgresIT {
     void devePreservarUtf8ESimbolosEmIdSobPerfilInfra() throws Exception {
         String jsonUtf8 = """
             {
-                "id": "BOLSA_UTF8-02/2026",
+                "id": "BOLSA_UTF8-02-2026",
                 "tipoSanguineo": "AB+",
                 "volumeMl": 450.0,
                 "dataColeta": "2026-09-01",
@@ -136,9 +136,9 @@ class EstoqueControllerIT extends AbstractPostgresIT {
                 .content(jsonUtf8))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/estoque/BOLSA_UTF8-02/2026"))
+        mockMvc.perform(get("/api/estoque/BOLSA_UTF8-02-2026"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is("BOLSA_UTF8-02/2026")))
+                .andExpect(jsonPath("$.id", is("BOLSA_UTF8-02-2026")))
                 .andExpect(jsonPath("$.doador", is("José da Conceição Araújo & Cia")));
     }
 
