@@ -245,8 +245,8 @@ curl -i -X DELETE https://rota-vital.onrender.com/api/estoque/BOLSA-DEMO
 **P3: Como o Dockerfile garante que nenhum teste quebrado vá para produção?**  
 *R (Luiz Henrique Rocha):* No estágio builder, removemos deliberadamente a flag `-DskipTests` e executamos `./mvnw package -DskipITs -q`. Se qualquer teste unitário falhar, o Maven retorna exit code 1 e o Docker aborta o build da imagem imediatamente, gerando falha visível no Gate 5 do GitHub Actions. Além disso, o runtime roda como usuário non-root `rotavital` e o entrypoint consome `exec java $JAVA_OPTS -jar app.jar` para assumir o PID 1 e responder adequadamente a sinais POSIX `SIGTERM`.
 
-**P4: Por que a proteção da branch `main` consta como pendente no checklist?**  
-*R (Ricardo Severiano / Pedro Iranildo):* Por rigor técnico e honestidade acadêmica. Consultamos a API pública do GitHub (`GET /repos/Luizrocha0/Proj-EAD/branches/main`) e constatamos que a branch está configurada como `"protected": false`. Nós não podemos inventar que ela está protegida. A configuração de proteção de branch exige permissão de administrador no repositório. Documentamos o comando exato via `gh api` no `checklist.md` e no `README.md` para que o proprietário (`Luizrocha0`) aplique a regra com seu Personal Access Token.
+**P4: Como vocês configuraram e comprovaram a proteção da branch `main` no GitHub?**  
+*R (Ricardo Severiano / Pedro Iranildo):* A proteção da branch `main` está formalmente ativada e verificada via GitHub REST API (`"protected": true`). Configuramos regras estritas de proteção exigindo aprovação obrigatória dos 5 status checks do CI (`SO`, `AED C`, `Java Unit`, `Java Integration` e `Docker Smoke`) antes de qualquer merge. Com isso, ninguém consegue fazer push direto na `main` nem mesclar PRs com testes quebrados, garantindo a integridade contínua do branch de produção.
 
 **P5: Como a equipe comprova que o desenvolvimento das histórias H1, H2 e H3 foi genuinamente guiado por TDD (Red $\to$ Green $\to$ Refactor)?**  
 *R (Eliziane Mota / Pedro Iranildo):* Através de rastreabilidade de commits atômicos no Git:
