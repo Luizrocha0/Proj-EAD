@@ -291,7 +291,6 @@ Rastreabilidade cronológica e verificável dos commits de TDD na Release 1:
 | **Story Map & Critérios de Aceite** | `docs/infra-u2/story-map.md` |
 | **Relatório Completo de TDD** | `docs/infra-u2/tdd.md` |
 | **Checklist e Matriz de Conformidade** | `docs/infra-u2/checklist.md` |
-| **Roteiro da Apresentação em Sala** | `docs/infra-u2/apresentacao.md` |
 | **Registro de Progresso por Etapas** | `docs/infra-u2/progresso.md` |
 | **Divisão de Tarefas da Equipe** | `docs/infra-u2/divisao-tarefas.md` |
 | **Histórico de Coautoria** | `docs/historico-coautoria.json` |

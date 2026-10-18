@@ -532,7 +532,6 @@ rota-vital/
 │   ├── evidencias/
 │   │   └── README.md                 # Catálogo detalhado de todas as evidências da U2
 │   ├── infra-u2/
-│   │   ├── apresentacao.md           # Roteiro estruturado para apresentação em sala
 │   │   ├── checklist.md              # Matriz completa de conformidade E1, E2 e E3
 │   │   ├── divisao-tarefas.md        # Atribuição formal de responsabilidades
 │   │   ├── progresso.md              # Registro exaustivo de etapas e decisões
