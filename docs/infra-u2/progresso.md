@@ -1415,7 +1415,7 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
 - **Data de Execução:** 17/10/2026
 - **Artefatos Produzidos / Consolidados:**
   - `README.md` (consolidação completa na raiz)
-  - `docs/infra-u2/checklist.md` (matriz exaustiva de conformidade E1/E2/E3 com 36 requisitos)
+  - `docs/infra-u2/checklist.md` (matriz exaustiva de conformidade E1/E2/E3/DOC com 43 requisitos)
   - `docs/infra-u2/apresentacao.md` (roteiro detalhado para sala de aula com divisão de falas, cronograma de 15-20 min e FAQ da banca)
   - `docs/evidencias/README.md` (catálogo estruturado de todas as evidências geradas e auditadas da U2)
   - `docs/infra-u2/progresso.md` (registro formal de conclusão da Etapa 8)
@@ -1577,7 +1577,7 @@ Todas as suítes de validação foram reexecutadas no ambiente local durante a a
   - `Tests run: 201, Failures: 0, Errors: 0, Skipped: 0`
   - Classes executadas:
     - `com.rotavital.aed.u1.FilaRequisicaoTest`: 12 testes aprovados
-    - `com.rotavital.aed.u1.ListaEstoqueTest`: 14 testes aprovados
+    - `com.rotavital.aed.u1.ListaEstoqueTest`: 17 testes aprovados
     - `com.rotavital.config.DatabaseConfigTest`: 18 testes aprovados
     - `com.rotavital.controller.DuplicateControllerTest`: 5 testes aprovados
     - `com.rotavital.controller.EstoqueControllerCaracterizacaoTest`: 21 testes aprovados
@@ -1668,7 +1668,7 @@ A matriz abaixo confronta exaustivamente cada um dos 43 requisitos mandatórios 
 | **E2.11** | **E2: Testes** | Segregação estrita Surefire (`*Test.java`) vs Failsafe (`*IT.java`) | `pom.xml` (`maven-surefire-plugin` e `maven-failsafe-plugin`) | `.\mvnw.cmd test` roda 201 unitários sem Testcontainers; `verify` aciona Testcontainers com fail-fast. | **ATENDIDO** |
 | **E2.12** | **E2: Testes** | Testes de integração com PostgreSQL real sem mocks | `AbstractPostgresIT.java`, `BolsaPersistidaIT.java`, `JdbcEstoqueStorageIT.java` | Testcontainers provisiona imagem `postgres:16-alpine` executando DDL/DML real. | **ATENDIDO** |
 | **E3.1** | **E3: CI/CD** | Pipeline estruturado em DAG com 6 jobs encadeados | `.github/workflows/ci.yml` | Dependências `needs:` validadas: benchmark/C/unit $\to$ integration $\to$ smoke $\to$ deploy. | **ATENDIDO** |
-| **E3.2** | **E3: CI/CD** | Eliminação completa de contornos permissivos na esteira | `.github/workflows/ci.yml` | Zero ocorrências de `continue-on-error` e zero `\|\| true`. Falha bloqueia progressão. | **ATENDIDO** |
+| **E3.2** | **E3: CI/CD** | Eliminação completa de contornos permissivos na esteira | `.github/workflows/ci.yml` | Zero ocorrências de `continue-on-error` e zero `&#124;&#124; true`. Falha bloqueia progressão. | **ATENDIDO** |
 | **E3.3** | **E3: CI/CD** | Smoke test containerizado com validação de CRUD REST completo | `.github/workflows/ci.yml` (Gate 5) | Compose up + validação de Actuator com banco, listagem vazia, cadastro H1, consulta H1, listagem H2, remoção H3, 404 e 400. | **ATENDIDO** |
 | **E3.4** | **E3: Deploy** | Deploy hook condicionado a merge na `main` e commit SHA aprovado | `.github/workflows/ci.yml` (Gate 6) | Disparo via `curl -sS "${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"` exclusivamente em `refs/heads/main`. | **ATENDIDO** |
 | **E3.5** | **E3: Deploy** | Proteção de Segredos no CI contra vazamento em logs | `.github/workflows/ci.yml` | Segredos injetados via variáveis de ambiente; URL suprimida em logs; SHA rastreável. | **ATENDIDO** |
