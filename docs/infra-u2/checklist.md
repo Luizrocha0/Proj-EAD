@@ -113,7 +113,33 @@ Este documento apresenta a **Matriz Exaustiva de Conformidade** da entrega da Un
 
 ### Detalhamento das 3 Pendências Externas (Ação Necessária do Mantenedor `Luizrocha0`):
 1. **Ativação da Proteção de Branch `main` no GitHub:**
-   - *Comando:*
+   - *Comando no Windows (PowerShell):*
+     ```powershell
+     @'
+     {
+       "required_status_checks": {
+         "strict": true,
+         "contexts": [
+           "SO — Validação das Medições e Speedup (Python)",
+           "AED C — GCC + Sanitizers (Address + Undefined)",
+           "Java — Testes Unitários (Surefire)",
+           "Java — Integração e Aceitação (Failsafe + Testcontainers)",
+           "Docker — Build da Imagem e Smoke Test Containerizado"
+         ]
+       },
+       "enforce_admins": true,
+       "required_pull_request_reviews": {
+         "dismiss_stale_reviews": true,
+         "require_code_owner_reviews": false,
+         "required_approving_review_count": 1
+       },
+       "restrictions": null,
+       "allow_force_pushes": false,
+       "allow_deletions": false
+     }
+     '@ | gh api --method PUT repos/Luizrocha0/Proj-EAD/branches/main/protection --input -
+     ```
+   - *Comando no Linux / Bash / macOS:*
      ```bash
      gh api --method PUT repos/Luizrocha0/Proj-EAD/branches/main/protection \
        --input - << 'EOF'
