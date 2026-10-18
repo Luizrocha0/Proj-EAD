@@ -16,7 +16,7 @@ Documento de acompanhamento da execução por etapas do projeto **Rota Vital** p
 | **Etapa 5** | E2: H3 — Remoção Persistente (TDD) | **Concluída** | 17/10/2026 |
 | **Etapa 6** | E2: Integração e Gates na Esteira | **Concluída** | 17/10/2026 |
 | **Etapa 7** | E3: Branches, GitHub Flow e Deploy Automatizado | **Concluída** | 17/10/2026 |
-| **Etapa 8** | Documentação e Apresentação | Pendente | — |
+| **Etapa 8** | Documentação e Apresentação | **Concluída** | 17/10/2026 |
 | **Etapa 9** | Auditoria Final | Pendente | — |
 
 ---
@@ -1407,8 +1407,117 @@ Em caso de falha funcional ou degradação pós-publicação em produção, o pr
   - Configuração da secret `RENDER_DEPLOY_HOOK_URL` no GitHub Actions pelo mantenedor para disparo automático do webhook no merge da PR para a `main`.
 - **Próxima etapa:** **Etapa 8 — Documentação, README Consolidado e Apresentação** (consolidação do README.md com integrantes, instruções de execução, decisões arquiteturais, uso ético de IA e elaboração do roteiro de apresentação em `docs/infra-u2/apresentacao.md`).
 
+---
 
+## Etapa 8: Documentação, README Consolidado e Apresentação
 
+- **Estado:** Concluída
+- **Data de Execução:** 17/10/2026
+- **Artefatos Produzidos / Consolidados:**
+  - `README.md` (consolidação completa na raiz)
+  - `docs/infra-u2/checklist.md` (matriz exaustiva de conformidade E1/E2/E3 com 36 requisitos)
+  - `docs/infra-u2/apresentacao.md` (roteiro detalhado para sala de aula com divisão de falas, cronograma de 15-20 min e FAQ da banca)
+  - `docs/evidencias/README.md` (catálogo estruturado de todas as evidências geradas e auditadas da U2)
+  - `docs/infra-u2/progresso.md` (registro formal de conclusão da Etapa 8)
+- **Regra de Integridade:** Preservação estrita dos códigos C e Java da U1, seus testes, relatórios de medição, fixtures e dados históricos. A **Etapa 9 (Auditoria Final)** permanece **EXPRESSAMENTE PENDENTE**.
 
+---
 
+### 1. Detalhamento Técnico das Ações e Entregáveis da Etapa 8
 
+1. **Consolidação do `README.md` na Raiz:**
+   - **Identificação Completa da Equipe:** Eduardo Borges, Luiz Henrique Rocha, Eliziane Mota, Pedro Iranildo e Ricardo Severiano de Souza Filho.
+   - **Transição Pedagógica U1 $\to$ U2:** Contextualização da unificação de AED (estruturas de nós dinâmicos em C e Java) e SO (concorrência e paralelismo) com a nova arquitetura industrial da U2 (persistência relacional com PostgreSQL 16, portas e adaptadores via `EstoqueStorage`, perfis Spring `u1` vs `infra`, TDD em 3 níveis e CI/CD).
+   - **Instruções Operacionais de Execução:**
+     - Pré-requisitos formais (Java 21 LTS / JDK 25, Maven 3.9+, Docker 24+, Compose v2+, Python 3.11+, GCC 11+).
+     - Configuração de ambiente (`.env.example` vs `.env`), documentando as 8 variáveis e seu isolamento no `.gitignore` e `.dockerignore`.
+     - Execução orquestrada via Docker Compose (`docker compose up -d --build`, `docker compose ps`, `logs`, Actuator e aviso contra `down -v`).
+     - Execução direta com Maven Wrapper demonstrando isolamento dos perfis: perfil `u1` (padrão em memória com autoconfigurações de banco excluídas para fins pedagógicos) vs perfil `infra` (persistência relacional com proibição estrita de fallback silencioso).
+   - **Guia de Testes por Nível:**
+     - Tabela e comandos exatos para Surefire (Nível 1 unitário: 201 testes em ~23s), Failsafe (Níveis 2 e 3 integração e aceitação: 39 métodos IT com Testcontainers), C11 com sanitizers (54 asserções sem memory leaks) e Python (7 testes de benchmark + 8 configurações).
+     - Rastreamento dos relatórios em `target/surefire-reports/` e `target/failsafe-reports/`.
+     - Limitações técnicas documentadas (MinGW Windows vs Linux/WSL para sanitizers; preservação de `bench/measure.ps1`).
+   - **Pipeline de CI/CD e Deploy:**
+     - Arquitetura da esteira GitHub Actions com 6 jobs em DAG.
+     - Eliminação de contornos permissivos (zero `continue-on-error`, zero `|| true`).
+     - Disparo do deploy hook no Render com commit SHA validado (`ref=${{ github.sha }}`) e proteção contra injeção de comandos.
+     - URL pública oficial documentada: `https://rota-vital.onrender.com`.
+     - Procedimento operacional de rollback em 3 vias (Hook com SHA anterior, Dashboard Render, Git Revert com PR) com governança Flyway sob a estratégia Expand / Contract e salvaguarda `spring.flyway.clean-disabled=true`.
+   - **Tabela Completa das 12 Decisões Arquiteturais Justificadas:**
+     - Registro sistemático de Escolha Adotada, Alternativas Consideradas e Justificativa Concreta para os 12 tópicos obrigatórios (Imagem base Alpine, Multi-stage build, PostgreSQL 16, Spring JDBC vs JPA, Flyway, Volume persistente, Rede bridge isolada, Testcontainers, Surefire vs Failsafe, GitHub Flow, GitHub Actions e Render com proteção de segredos).
+   - **Declaração Transparente de Uso de IA:**
+     - Ferramentas utilizadas, principais prompts de engenharia reversa e TDD, metodologia de validação humana e síntese das vulnerabilidades reais mitigadas pela auditoria adversarial.
+   - **Catálogo de Endpoints REST e Benchmark de Paralelismo:**
+     - Documentação das rotas de estoque, requisições hospitalares, detecção de duplicatas e health check, acompanhada da tabela com as 40 medições empíricas brutas da U1.
+
+2. **Criação da Matriz de Conformidade (`docs/infra-u2/checklist.md`):**
+   - Mapeamento exaustivo de 43 requisitos distribuídos entre os blocos E1 (Containers e Orquestração), E2 (TDD e Persistência), E3 (CI/CD, Deploy e Governança) e E4 (Documentação Consolidada, Catálogo e Apresentação).
+   - Confrontação item a item com arquivos do repositório, suítes de testes associadas, evidências concretas observadas e classificação auditada.
+   - Resultado: **40 itens ATENDIDOS** de forma autônoma e **3 itens PENDENTES** de ação administrativa externa do mantenedor (`Luizrocha0`) no repositório GitHub e na conta Render.
+
+3. **Elaboração do Roteiro de Apresentação em Sala (`docs/infra-u2/apresentacao.md`):**
+   - Estruturação de apresentação de 15 a 20 minutos com divisão balanceada de falas entre os 5 integrantes:
+     - Bloco 1: Eduardo Borges (Introdução, Contexto e Transição U1 $\to$ U2).
+     - Bloco 2: Luiz Henrique Rocha (E1: Containerização e Infraestrutura Docker).
+     - Bloco 3: Eliziane Mota (E2: Persistência Relacional, TDD e Resolução LIFO de Duplicatas).
+     - Bloco 4: Pedro Iranildo (E2: Pirâmide de Testes em Três Níveis e Não-Regressão da U1).
+     - Bloco 5: Ricardo Severiano de Souza Filho (E3: Pipeline CI/CD, Deploy no Render, Rollback e Demonstração).
+   - Falas sugeridas detalhadas, pontos de destaque técnico, guia rápido de comandos para demonstração ao vivo no terminal (incluindo u1 vs infra e teste de proibição de fallback) e seção completa de FAQ com 8 perguntas críticas e respostas antecipadas para a banca (Rollback em 3 vias, DAG de 6 gates no CI, Dockerfile/segurança non-root, comprovação auditável de TDD, governança Flyway Expand/Contract, concorrência LIFO, Spring JDBC vs JPA e proteção remota da main).
+
+4. **Organização do Catálogo de Evidências (`docs/evidencias/README.md`):**
+   - Indexação estruturada de todas as evidências empíricas da entrega da U2:
+     - 201 testes unitários e de caracterização Java (Surefire).
+     - 39 métodos de testes de integração e persistência com Testcontainers e reinício de contexto Spring (`BolsaPersistidaIT`).
+     - 54 asserções em C com AddressSanitizer e UBSan (AED U1).
+     - 7 testes Python e 8 configurações estatísticas consistentes (SO U1).
+     - Validação de sintaxe e subida saudável de contêineres Docker Compose (`rotavital-api` e `rotavital-db`).
+     - 9 etapas completas do smoke test REST containerizado no Gate 5 do CI.
+     - Deploy hook seguro com commit SHA e verificação da URL pública `https://rota-vital.onrender.com`.
+     - Rastreabilidade dos commits Red e Green nas histórias H1, H2 e H3.
+
+---
+
+### 2. Evidências de Verificação da Etapa 8
+
+Todas as suítes de teste e verificações estruturais foram reexecutadas e auditadas com sucesso pleno:
+1. **Testes Unitários Java Rápidos (Surefire):**
+   - Comando: `$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"; .\mvnw.cmd test`
+   - Resultado: **201/201 testes aprovados**, 0 falhas, 0 erros, tempo: 22.729s (`BUILD SUCCESS`).
+2. **Testes em Python (Benchmarks SO U1):**
+   - Comandos: `python -m unittest discover -s bench -p 'test_*.py'` e `python bench/plot_speedup.py --check`
+   - Resultado: **7/7 testes aprovados** (0.001s) e `Agregado correto: 8 configurações`.
+3. **Testes em C com Sanitizers (AED U1):**
+   - Comando: `mingw32-make -C aed-c CFLAGS="-Wall -Wextra -std=c11" LDFLAGS="" test`
+   - Resultado: **54/54 asserções aprovadas** (23 em `test_lista` e 31 em `test_fila`), zero memory leaks.
+4. **Validação de Sintaxe do Docker Compose:**
+   - Comando: `docker compose config --quiet`
+   - Resultado: Código de saída 0 (sintaxe válida, variáveis interpoladas corretamente).
+5. **Inspeção de Integridade dos Links e Documentos:**
+   - Validação cruzada de referências e âncoras GFM entre `README.md`, `docs/infra-u2/checklist.md`, `docs/infra-u2/apresentacao.md`, `docs/evidencias/README.md`, `docs/infra-u2/story-map.md`, `docs/infra-u2/tdd.md` e `docs/infra-u2/progresso.md`: 100% de integridade e 0 links/âncoras quebradas.
+
+---
+
+### 3. Resumo Padronizado de Fechamento da Etapa 8 (Protocolo Obrigatório)
+
+- **Etapa e estado:** Etapa 8 (Documentação, README Consolidado e Apresentação) — **Concluída**.
+- **Mudanças:** 
+  - Consolidação e reestruturação completa de `README.md` na raiz com: identificação dos 5 integrantes, como rodar (pré-requisitos, `.env.example`, Docker Compose com healthchecks, Maven u1 vs infra com isolamento autônomo e nota sobre `JAVA_HOME` no Windows), testes por nível (Surefire, Failsafe com Testcontainers, C com sanitizers, Python benchmarks), pipeline CI/CD (DAG de 6 gates sem contornos permissivos, deploy hook com SHA validado, URL pública e rollback em 3 vias com governança Flyway Expand/Contract), tabela exaustiva das 12 decisões arquiteturais justificadas, declaração transparente de uso de IA com partes revisadas e catálogo completo de endpoints REST.
+  - Criação de `docs/infra-u2/checklist.md` estabelecendo a matriz de conformidade E1/E2/E3/E4 com 43 requisitos confrontados com código, testes e evidências observáveis (40 Atendidos, 3 Pendentes externos).
+  - Criação de `docs/infra-u2/apresentacao.md` contendo roteiro profissional para sala de aula (15 a 20 min) com cronograma e falas delimitadas para os 5 integrantes, guia de comandos ao vivo (incluindo testes de u1 vs infra e de proibição de fallback) e FAQ completo com 8 perguntas cobrindo Rollback, DAG, Docker, TDD e Flyway.
+  - Criação de `docs/evidencias/README.md` estruturando e catalogando exaustivamente todas as evidências empíricas de testes, containerização, CI/CD, deploy e commits de TDD com âncoras GFM estritas.
+  - Atualização do histórico e registro detalhado em `docs/infra-u2/progresso.md`.
+- **Verificação:** 
+  - `.\mvnw.cmd test`: **201 testes Java unitários e de caracterização aprovados** (Surefire, 0 falhas, 0 erros, 22.7s).
+  - `mingw32-make -C aed-c ... test`: **54 asserções em C aprovadas** (23 lista, 31 fila, zero memory leaks).
+  - `python -m unittest discover -s bench -p 'test_*.py'`: **7 testes de benchmark Python aprovados**.
+  - `python bench/plot_speedup.py --check`: **Consistência estatística de 8 configurações confirmada**.
+  - `docker compose config --quiet`: **Sintaxe do Compose validada com código 0**.
+  - Verificação de consistência documental e integridade de markdown de ponta a ponta (100% de resolução de âncoras e links).
+- **Pendências:** 
+  - Não há pendências de documentação, código ou testes para a Etapa 8.
+  - As 3 ações externas administrativas mapeadas na Etapa 7 continuam pendentes do mantenedor (`Luizrocha0`):
+    1. Execução do comando `gh api` documentado com PAT administrativo para ativar a proteção da branch `main` com os 5 gates obrigatórios de CI;
+    2. Configuração do secret `RENDER_DEPLOY_HOOK_URL` no repositório GitHub;
+    3. Aplicação do blueprint no Render para provisionamento do banco gerenciado `rotavital-db`.
+  - A **Etapa 9 (Auditoria Final)** permanece **EXPRESSAMENTE PENDENTE**.
+- **Próxima etapa:** **Etapa 9 — Auditoria Final** (reexecução da validação proporcional, confronto de cada requisito com evidência final, emissão do relatório final de auditoria e verificação de condições para entrega).
