@@ -11,7 +11,7 @@ jobs:
   # GATE 1: Benchmarks e Validação Python (SO)
   # ─────────────────────────────────────────────
   check-benchmark:
-    name: "SO — Validação das Medições e Speedup (Python)"
+    name: "SO - Validação das Medições e Speedup (Python)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,7 +32,7 @@ jobs:
   # GATE 2: Estruturas AED em C (AddressSanitizer + UBSan)
   # ─────────────────────────────────────────────
   test-c:
-    name: "AED C — GCC + Sanitizers (Address + Undefined)"
+    name: "AED C - GCC + Sanitizers (Address + Undefined)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,7 +55,7 @@ jobs:
   # GATE 3: Testes Unitários Java (Surefire sem banco)
   # ─────────────────────────────────────────────
   test-java-unit:
-    name: "Java — Testes Unitários (Surefire)"
+    name: "Java - Testes Unitários (Surefire)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -86,7 +86,7 @@ jobs:
   # GATE 4: Testes de Integração e Aceitação (Failsafe + Testcontainers)
   # ─────────────────────────────────────────────
   test-java-integration:
-    name: "Java — Integração e Aceitação (Failsafe + Testcontainers)"
+    name: "Java - Integração e Aceitação (Failsafe + Testcontainers)"
     runs-on: ubuntu-latest
     needs: test-java-unit
     steps:
@@ -120,7 +120,7 @@ jobs:
   # GATE 5: Build Docker sem -DskipTests e Smoke Test Containerizado
   # ─────────────────────────────────────────────
   build-docker-smoke:
-    name: "Docker — Build da Imagem e Smoke Test Containerizado"
+    name: "Docker - Build da Imagem e Smoke Test Containerizado"
     runs-on: ubuntu-latest
     needs: [check-benchmark, test-c, test-java-unit, test-java-integration]
     steps:
