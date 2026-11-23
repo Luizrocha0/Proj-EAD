@@ -1,7 +1,8 @@
 package com.rotavital.aed.u2;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.domain.TipoSanguineo;
+import com.rotavital.expedicao.negocio.dominio.Roteirizador;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.comum.dominio.TipoSanguineo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import static com.rotavital.domain.TipoSanguineo.*;
+import static com.rotavital.comum.dominio.TipoSanguineo.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AlgoritmosAedTest {

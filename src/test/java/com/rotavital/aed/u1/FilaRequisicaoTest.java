@@ -1,6 +1,6 @@
 package com.rotavital.aed.u1;
 
-import com.rotavital.domain.Requisicao;
+import com.rotavital.requisicoes.negocio.dominio.Requisicao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

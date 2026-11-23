@@ -1,7 +1,7 @@
 package com.rotavital.integration;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.storage.JdbcEstoqueStorage;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.dados.JdbcEstoqueStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

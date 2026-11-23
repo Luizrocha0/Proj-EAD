@@ -1,6 +1,7 @@
 package com.rotavital.storage;
 
-import com.rotavital.domain.Bolsa;
+import com.rotavital.estoque.dados.ListaEstoqueStorage;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

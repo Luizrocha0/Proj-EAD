@@ -1,6 +1,8 @@
 package com.rotavital.service;
 
-import com.rotavital.domain.Bolsa;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueService;
+import com.rotavital.estoque.dados.ListaEstoqueStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,7 @@ class EstoqueServiceCaracterizacaoTest {
 
     @BeforeEach
     void setUp() {
-        service = new EstoqueService();
+        service = new EstoqueService(new ListaEstoqueStorage());
     }
 
     private Bolsa criarBolsa(String id, String tipo, double volume, String doador) {

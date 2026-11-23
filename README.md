@@ -69,6 +69,14 @@ Na **Unidade 2**, sem descartar o patrimônio da U1, elevamos a aplicação para
 - **Containerização Otimizada:** Dockerfile multi-stage com compilação e testes no build (sem `-DskipTests`), runtime non-root enxuto com Alpine Linux, e orquestração completa via Docker Compose com healthchecks encadeados.
 - **Esteira CI/CD em DAG de 6 Gates:** Pipeline no GitHub Actions sem contornos permissivos, smoke test REST containerizado, deploy hook com commit SHA aprovado no Render e rollback auditável em 3 vias com governança Flyway (Expand/Contract).
 
+### U2 · Parte 2
+
+O atendimento preserva FIFO, FEFO e a roteirização da AED. Os quatro contextos se organizam por camadas. No perfil `infra`, o PostgreSQL confirma juntos fila e estoque. O perfil `u1` usa as estruturas encadeadas.
+
+[Planejamento da remodelagem](docs/arquitetura/u2-parte-2/planejamento.md) · [Orçamento](docs/arquitetura/u2-parte-2/orcamento-render.xlsx)
+
+O comando `./mvnw -Pintegration verify` mede cobertura Java com PostgreSQL real. Consulte `target/site/jacoco/index.html` após a execução.
+
 ---
 
 ## 2. Como Rodar
@@ -475,7 +483,7 @@ curl http://localhost:8080/api/estoque
 | Método | Endpoint | Descrição | Status de Sucesso |
 |---|---|---|:---:|
 | `POST` | `/api/requisicoes` | Enfileira requisição emergencial | `200 OK` |
-| `POST` | `/api/requisicoes/atender` | Recebe pedido e percurso. Aloca bolsas compatíveis em FEFO, confirma a baixa e retorna a rota. | `200 OK` |
+| `POST` | `/api/requisicoes/atender` | Confirma baixa integral em FEFO, consome o pedido e retorna bolsas e rota. | `200 OK` |
 | `GET` | `/api/requisicoes/proxima` | Consulta a próxima requisição sem remover (peek) | `200 OK` |
 | `GET` | `/api/requisicoes` | Lista todas as requisições pendentes na fila | `200 OK` |
 
@@ -544,27 +552,29 @@ rota-vital/
 │   └── speedup.png                   # Gráfico oficial de speedup
 ├── fixtures/                         # Fixtures sintéticas canônicas (bolsas e requisições)
 ├── src/main/java/com/rotavital/
-│   ├── aed/u1/                       # Estruturas manuais com nós dinâmicos em Java
-│   ├── config/                       # DatabaseConfig para conversão e blindagem de URLs
-│   ├── controller/                   # EstoqueController, RequisicaoController, DuplicateController
-│   ├── domain/                       # Entidades Bolsa e Requisicao
-│   ├── dto/                          # BolsaRequestDTO resiliente a números e strings
-│   ├── service/                      # Camada de negócio desacoplada via EstoqueStorage
-│   └── storage/                      # EstoqueStorage, ListaEstoqueStorage (u1), JdbcEstoqueStorage (infra)
+│   ├── aed/                          # Estruturas encadeadas e algoritmos de AED
+│   ├── config/                       # Composição Spring e configuração do DataSource
+│   ├── comum/                        # Tipos e erros compartilhados
+│   ├── estoque/                      # Apresentação, negócio e dados do Estoque
+│   ├── requisicoes/                  # Fila FIFO em memória ou JDBC
+│   ├── expedicao/                    # Atendimento, guia de saída e rota
+│   └── comparacaotextual/            # Detecção de pares em amostras sintéticas
 ├── src/main/resources/
 │   ├── application.properties        # Perfil default u1
 │   ├── application-u1.properties     # Isolamento de banco para modo em memória puro
 │   ├── application-infra.properties  # Configuração PostgreSQL, Flyway e salvaguardas
 │   └── db/migration/
-│       └── V1__criar_tabela_bolsas.sql # Esquema com BIGSERIAL LIFO e índices
-├── src/test/java/com/rotavital/      # 201 testes unitários e 3 suítes de integração IT
-│   ├── aed/u1/, config/, controller/ # Testes unitários Nível 1 (Surefire)
-│   ├── dto/, service/, storage/      # Testes unitários e mocks de persistência
+│       ├── V1__criar_tabela_bolsas.sql # Estoque LIFO e índices
+│       └── V2__criar_fila_de_requisicoes.sql # Fila FIFO persistente
+├── src/test/java/com/rotavital/
+│   ├── aed/, arquitetura/, controller/ # Estruturas, camadas e contratos HTTP
+│   ├── estoque/, expedicao/          # Invariantes dos modelos
 │   └── integration/                  # Suítes Nível 2 e 3 (Failsafe + Testcontainers)
 │       ├── AbstractPostgresIT.java   # Contêiner singleton PostgreSQL 16
 │       ├── BolsaPersistidaIT.java    # Sobrevivência de dados pós-reinício de contexto
 │       ├── EstoqueControllerIT.java  # Testes de aceitação REST de ponta a ponta
-│       └── JdbcEstoqueStorageIT.java # Testes de persistência direta JDBC e subqueries
+│       ├── JdbcEstoqueStorageIT.java # Contratos de persistência JDBC
+│       └── FilaCompartilhadaIT.java  # Concorrência e reversão da baixa
 ├── .dockerignore                     # Proteção contra envio de segredos ao build
 ├── .env.example                      # Modelo documentado de variáveis de ambiente
 ├── .gitignore                        # Blindagem estrita de credenciais (.env)

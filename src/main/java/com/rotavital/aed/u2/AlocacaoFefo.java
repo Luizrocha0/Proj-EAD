@@ -1,7 +1,7 @@
 package com.rotavital.aed.u2;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.domain.TipoSanguineo;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.comum.dominio.TipoSanguineo;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ public final class AlocacaoFefo {
         for (int posicao = 0; posicao < estoque.length; posicao++) {
             Bolsa bolsa = estoque[posicao];
             if (!bolsa.isVencida(referencia)) {
-                var tipo = TipoSanguineo.identificar(bolsa.getTipoSanguineo());
+                var tipo = bolsa.tipoReconhecido();
                 if (tipo.isPresent()) {
                     indice.inserir(tipo.get(), posicao);
                 }

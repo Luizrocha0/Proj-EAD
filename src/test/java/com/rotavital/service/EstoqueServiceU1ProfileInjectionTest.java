@@ -1,7 +1,8 @@
 package com.rotavital.service;
 
-import com.rotavital.storage.EstoqueStorage;
-import com.rotavital.storage.ListaEstoqueStorage;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueService;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueStorage;
+import com.rotavital.estoque.dados.ListaEstoqueStorage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

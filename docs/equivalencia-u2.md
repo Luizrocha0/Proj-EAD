@@ -75,11 +75,11 @@ O resultado traz `RV-O-MELHOR` e `RV-A-DEPOIS`, nessa ordem. O trajeto é `CENTR
 | ID já pendente, pedido fora da cabeça ou estoque insuficiente | `409` |
 | Outra operação retira uma ocorrência selecionada | `409` com reversão da baixa em PostgreSQL |
 
-`paradas` é opcional. Cada ponto usa `id`, `xKm` e `yKm`. São aceitas até 256 paradas e coordenadas entre −50.000 e 50.000 km. A fila continua em memória por instância. No perfil `infra`, o estoque e suas baixas ficam no PostgreSQL.
+`paradas` é opcional. Cada ponto usa `id`, `xKm` e `yKm`. São aceitas até 256 paradas e coordenadas entre −50.000 e 50.000 km. A fila usa nós encadeados no perfil `u1`. No perfil `infra`, o PostgreSQL confirma baixa e consumo juntos.
 
 ## Tradução comentada de C para Java
 
-Os fontes C ficam em `aed-c/src/u2/`. Os módulos Java ficam em `src/main/java/com/rotavital/aed/u2/`. Os dois lados usam as mesmas prioridades, a mesma ordem dos oito tipos e os mesmos desempates. As versões C recebem vetores preparados pelo chamador. Os adaptadores Java montam esses vetores usando as estruturas da aplicação.
+Os fontes C ficam em `aed-c/src/u2/`. Os algoritmos Java ficam em `com.rotavital.aed.u2` e no domínio da Expedição. Os dois lados preservam a ordem dos tipos e desempates. As versões C recebem vetores preparados pelo chamador. Os adaptadores Java montam esses vetores usando as estruturas da aplicação.
 
 ### Matriz ABO/Rh
 
@@ -92,7 +92,7 @@ return tipo_valido(doador) && tipo_valido(receptor) && matriz[receptor][doador];
 
 ```java
 // TipoSanguineo.exigir valida o rótulo na borda.
-return MATRIZ[receptor.ordinal()][doador.ordinal()];
+return receptor.aceitaDoacaoDe(doador);
 ```
 
 ### Índice de estoque
@@ -157,7 +157,7 @@ if (distancia < menorDistancia) {
 }
 ```
 
-`atender_requisicao` combina percurso e seleção em C. `RequisicaoService.atenderProxima` usa os mesmos algoritmos em Java. A baixa fica com o adaptador de estoque.
+`atender_requisicao` combina percurso e seleção em C. `AtenderRequisicao.executar` usa os mesmos algoritmos em Java. Estoque confirma o lote. Expedição monta a guia.
 
 ## Complexidade derivada da implementação
 

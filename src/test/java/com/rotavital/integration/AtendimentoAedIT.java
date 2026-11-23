@@ -1,7 +1,7 @@
 package com.rotavital.integration;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.service.EstoqueService;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

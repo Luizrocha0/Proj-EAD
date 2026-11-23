@@ -2,7 +2,7 @@ name: CI — Rota Vital
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**']
+    branches: [main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**', 'u2-parte-2-ddd-arquitetura']
   pull_request:
     branches: [main]
 
@@ -114,6 +114,7 @@ jobs:
           path: |
             target/failsafe-reports/
             target/surefire-reports/
+            target/site/jacoco/
           retention-days: 7
 
   # ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
 package com.rotavital.aed.u1;
 
-import com.rotavital.domain.Requisicao;
+import com.rotavital.requisicoes.negocio.dominio.Requisicao;
 
 /**
  * Nó da fila encadeada de requisições emergenciais.
