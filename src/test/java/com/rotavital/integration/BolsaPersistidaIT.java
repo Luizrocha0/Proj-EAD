@@ -1,7 +1,7 @@
 package com.rotavital.integration;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.storage.EstoqueStorage;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueStorage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

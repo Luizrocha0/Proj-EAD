@@ -1,5 +1,6 @@
 package com.rotavital.util;
 
+import com.rotavital.comparacaotextual.negocio.dominio.FuzzyMatcher;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

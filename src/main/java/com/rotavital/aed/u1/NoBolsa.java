@@ -1,6 +1,6 @@
 package com.rotavital.aed.u1;
 
-import com.rotavital.domain.Bolsa;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
 
 /**
  * Nó da lista encadeada de bolsas de sangue.
@@ -10,10 +10,12 @@ import com.rotavital.domain.Bolsa;
  */
 class NoBolsa {
 
-    Bolsa dado;
+    final long chave;
+    final Bolsa dado;
     NoBolsa proximo;
 
-    NoBolsa(Bolsa dado) {
+    NoBolsa(long chave, Bolsa dado) {
+        this.chave = chave;
         this.dado = dado;
         this.proximo = null;
     }

@@ -1,8 +1,10 @@
 package com.rotavital.aed.u1;
 
-import com.rotavital.domain.Bolsa;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.negocio.dominio.OcorrenciaBolsa;
 
 import java.util.Optional;
+import java.util.function.LongPredicate;
 
 /**
  * Lista simplesmente encadeada de bolsas de sangue (estoque).
@@ -30,6 +32,7 @@ public class ListaEstoque {
 
     /** Quantidade de elementos na lista */
     private int tamanho;
+    private long ultimaChave;
 
     public ListaEstoque() {
         this.cabeca = null;
@@ -48,7 +51,7 @@ public class ListaEstoque {
      * Complexidade: O(1)
      */
     public void inserir(Bolsa b) {
-        NoBolsa novo = new NoBolsa(b);  // Em C: No *novo = malloc(sizeof(No));
+        NoBolsa novo = new NoBolsa(++ultimaChave, b);
         novo.proximo = cabeca;           // Em C: novo->proximo = l->cabeca;
         cabeca = novo;                   // Em C: l->cabeca = novo;
         tamanho++;                       // Em C: l->tamanho++;
@@ -126,14 +129,11 @@ public class ListaEstoque {
         return remover(id);
     }
 
-    public void removerPosicoes(boolean[] retirar) {
-        if (retirar.length != tamanho) {
-            throw new IllegalArgumentException("As posições devem corresponder ao estoque atual");
-        }
+    public void removerOcorrencias(LongPredicate retirar) {
         NoBolsa anterior = null;
         NoBolsa atual = cabeca;
-        for (int i = 0; atual != null; i++, atual = atual.proximo) {
-            if (retirar[i]) {
+        for (; atual != null; atual = atual.proximo) {
+            if (retirar.test(atual.chave)) {
                 if (anterior == null) {
                     cabeca = atual.proximo;
                 } else {
@@ -173,6 +173,15 @@ public class ListaEstoque {
         while (atual != null) {
             resultado[i++] = atual.dado;
             atual = atual.proximo;
+        }
+        return resultado;
+    }
+
+    public OcorrenciaBolsa[] ocorrencias() {
+        var resultado = new OcorrenciaBolsa[tamanho];
+        NoBolsa atual = cabeca;
+        for (int i = 0; atual != null; i++, atual = atual.proximo) {
+            resultado[i] = new OcorrenciaBolsa(atual.chave, atual.dado);
         }
         return resultado;
     }

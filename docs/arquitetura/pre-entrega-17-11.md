@@ -35,7 +35,7 @@ Expedição é uma capacidade proposta. Os outros três contextos reorganizam co
 
 ## A. Mapa de contextos
 
-![Mapa dos quatro contextos propostos](mapa-de-contextos.svg)
+![Mapa dos quatro contextos propostos](mapa-de-contextos.png)
 
 As setas partem do fornecedor e apontam ao cliente. Representam dependência entre modelos. As integrações propostas funcionam dentro da mesma aplicação.
 
@@ -99,7 +99,7 @@ O monólito proposto organiza o código por contexto. Cada contexto separa apres
 
 ### Onde cada parte executa
 
-![Camadas lógicas dentro da API e banco separado](camadas-e-tiers.svg)
+![Camadas lógicas dentro da API e banco separado](camadas-e-tiers.png)
 
 O Compose inicia os serviços `api` e `db`. Controllers, casos de uso, domínio e adaptadores executam na JVM. O PostgreSQL roda em outro contêiner, com volume persistente. O perfil `infra` persiste apenas o estoque hoje. Requisições mantém a fila em memória nos dois perfis.
 

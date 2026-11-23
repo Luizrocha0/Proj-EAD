@@ -1,7 +1,8 @@
 package com.rotavital.dto;
 
+import com.rotavital.estoque.apresentacao.BolsaRequestDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rotavital.domain.Bolsa;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

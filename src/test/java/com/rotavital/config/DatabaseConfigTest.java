@@ -1,7 +1,9 @@
 package com.rotavital.config;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.mock.env.MockEnvironment;
 
 import javax.sql.DataSource;
@@ -10,6 +12,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Config — Suporte a DATABASE_URL no Perfil Infra")
 class DatabaseConfigTest {
+    @Test
+    void preservaCredenciaisAoRelatarUrlDeBancoInvalida() {
+        var erro = assertThrows(IllegalArgumentException.class, () -> DatabaseConfig.parseAndBuildDataSource(
+                "postgres://rotavital:senha-sintetica@localhost:porta/db"));
+        assertFalse(erro.getMessage().contains("senha-sintetica"));
+    }
+
+    @Test
+    void carregaConfiguracaoQuandoCredencialContemAspas() {
+        new ApplicationContextRunner().withUserConfiguration(DatabaseConfig.class)
+                .withPropertyValues("spring.profiles.active=infra",
+                        "DATABASE_URL=postgres://rotavital:senha'sintetica@localhost:5432/teste")
+                .run(contexto -> assertEquals("senha'sintetica", contexto.getBean(HikariDataSource.class).getPassword()));
+    }
 
     private final DatabaseConfig config = new DatabaseConfig();
 

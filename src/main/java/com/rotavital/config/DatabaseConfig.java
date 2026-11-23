@@ -2,13 +2,17 @@ package com.rotavital.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
 
@@ -25,7 +29,7 @@ public class DatabaseConfig {
 
     @Bean
     @Primary
-    @ConditionalOnExpression("!'${DATABASE_URL:}'.trim().isEmpty()")
+    @Conditional(DatabaseUrlDefinida.class)
     public DataSource dataSourceFromDatabaseUrl(Environment env) {
         String dbUrl = env.getProperty("DATABASE_URL");
         if (dbUrl == null || dbUrl.isBlank()) {
@@ -51,11 +55,11 @@ public class DatabaseConfig {
         }
 
         if (lowerTrimmed.startsWith("jdbc:")) {
-            throw new IllegalArgumentException("Esquema JDBC não suportado na DATABASE_URL (esperado 'jdbc:postgresql:'): " + dbUrl);
+            throw new IllegalArgumentException("Esquema JDBC não suportado na DATABASE_URL. Use 'jdbc:postgresql:'.");
         }
 
         if (!lowerTrimmed.startsWith("postgres://") && !lowerTrimmed.startsWith("postgresql://")) {
-            throw new IllegalArgumentException("Esquema de URL não suportado na DATABASE_URL (esperado 'postgres://', 'postgresql://' ou 'jdbc:postgresql://'): " + dbUrl);
+            throw new IllegalArgumentException("Esquema de URL não suportado na DATABASE_URL.");
         }
 
         try {
@@ -114,17 +118,17 @@ public class DatabaseConfig {
             if (hostPort.startsWith("[")) {
                 int closingBracket = hostPort.indexOf(']');
                 if (closingBracket <= 0) {
-                    throw new IllegalArgumentException("Endereço IPv6 com colchetes inválidos na DATABASE_URL: " + dbUrl);
+                    throw new IllegalArgumentException("Endereço IPv6 com colchetes inválidos na DATABASE_URL.");
                 }
                 host = hostPort.substring(0, closingBracket + 1);
                 if (closingBracket + 1 < hostPort.length()) {
                     if (hostPort.charAt(closingBracket + 1) == ':') {
                         String portStr = hostPort.substring(closingBracket + 2);
                         if (!portStr.isBlank()) {
-                            port = parsePort(portStr, dbUrl);
+                            port = parsePort(portStr);
                         }
                     } else {
-                        throw new IllegalArgumentException("Formato inválido após colchetes de IPv6 na DATABASE_URL (esperado ':porta' ou fim da string): " + dbUrl);
+                        throw new IllegalArgumentException("Formato inválido após colchetes de IPv6 na DATABASE_URL.");
                     }
                 }
             } else {
@@ -133,7 +137,7 @@ public class DatabaseConfig {
                     host = hostPort.substring(0, lastColon);
                     String portStr = hostPort.substring(lastColon + 1);
                     if (!portStr.isBlank()) {
-                        port = parsePort(portStr, dbUrl);
+                        port = parsePort(portStr);
                     }
                 } else {
                     host = hostPort;
@@ -141,7 +145,7 @@ public class DatabaseConfig {
             }
 
             if (host == null || host.isBlank()) {
-                throw new IllegalArgumentException("Host não especificado na DATABASE_URL: " + dbUrl);
+                throw new IllegalArgumentException("Host não especificado na DATABASE_URL.");
             }
 
             String jdbcUrl = "jdbc:postgresql://" + host + ":" + port + path;
@@ -164,19 +168,19 @@ public class DatabaseConfig {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalArgumentException("Erro ao processar DATABASE_URL: " + dbUrl, e);
+            throw new IllegalArgumentException("Erro ao processar DATABASE_URL.");
         }
     }
 
-    private static int parsePort(String portStr, String dbUrl) {
+    private static int parsePort(String portStr) {
         try {
             int port = Integer.parseInt(portStr.trim());
             if (port < 1 || port > 65535) {
-                throw new IllegalArgumentException("Porta fora do intervalo permitido (1-65535) na DATABASE_URL: " + dbUrl);
+                throw new IllegalArgumentException("Porta fora do intervalo permitido na DATABASE_URL.");
             }
             return port;
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Porta numérica inválida na DATABASE_URL: " + dbUrl, e);
+            throw new IllegalArgumentException("Porta numérica inválida na DATABASE_URL.");
         }
     }
 
@@ -187,5 +191,12 @@ public class DatabaseConfig {
         // Preserva '+' literal convertendo para %2B antes do decode standard
         String safe = value.replace("+", "%2B");
         return java.net.URLDecoder.decode(safe, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static class DatabaseUrlDefinida implements Condition {
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            return StringUtils.hasText(context.getEnvironment().getProperty("DATABASE_URL"));
+        }
     }
 }

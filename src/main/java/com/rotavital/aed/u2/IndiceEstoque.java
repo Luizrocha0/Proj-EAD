@@ -1,6 +1,6 @@
 package com.rotavital.aed.u2;
 
-import com.rotavital.domain.TipoSanguineo;
+import com.rotavital.comum.dominio.TipoSanguineo;
 
 import java.util.ArrayList;
 import java.util.List;

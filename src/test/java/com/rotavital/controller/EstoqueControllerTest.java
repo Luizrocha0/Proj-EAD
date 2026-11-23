@@ -1,8 +1,9 @@
 package com.rotavital.controller;
 
-import com.rotavital.domain.Bolsa;
-import com.rotavital.dto.BolsaRequestDTO;
-import com.rotavital.service.EstoqueService;
+import com.rotavital.estoque.apresentacao.EstoqueController;
+import com.rotavital.estoque.negocio.dominio.Bolsa;
+import com.rotavital.estoque.apresentacao.BolsaRequestDTO;
+import com.rotavital.estoque.negocio.aplicacao.EstoqueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

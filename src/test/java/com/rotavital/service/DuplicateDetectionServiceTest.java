@@ -1,5 +1,6 @@
 package com.rotavital.service;
 
+import com.rotavital.comparacaotextual.negocio.dominio.DuplicateDetectionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

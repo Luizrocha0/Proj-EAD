@@ -1,7 +1,9 @@
 package com.rotavital.controller;
 
-import com.rotavital.service.DataGeneratorService;
-import com.rotavital.service.DuplicateDetectionService;
+import com.rotavital.comparacaotextual.dados.DataGeneratorService;
+import com.rotavital.comparacaotextual.apresentacao.DuplicateController;
+import com.rotavital.comparacaotextual.negocio.aplicacao.DetectarPares;
+import com.rotavital.comparacaotextual.negocio.dominio.DuplicateDetectionService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -11,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DuplicateControllerTest {
 
     private final DuplicateController controller =
-            new DuplicateController(new DataGeneratorService(), new DuplicateDetectionService());
+            new DuplicateController(new DetectarPares(new DataGeneratorService(), new DuplicateDetectionService()));
 
     @Test
     void rejectsSizeAboveUpperLimit() {
