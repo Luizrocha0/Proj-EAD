@@ -29,6 +29,7 @@ desktop.ini
 # ── C ──
 aed-c/tests/test_lista
 aed-c/tests/test_fila
+aed-c/tests/test_u2
 aed-c/tests/*.exe
 *.o
 *.obj

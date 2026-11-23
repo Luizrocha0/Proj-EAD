@@ -126,6 +126,26 @@ public class ListaEstoque {
         return remover(id);
     }
 
+    public void removerPosicoes(boolean[] retirar) {
+        if (retirar.length != tamanho) {
+            throw new IllegalArgumentException("As posições devem corresponder ao estoque atual");
+        }
+        NoBolsa anterior = null;
+        NoBolsa atual = cabeca;
+        for (int i = 0; atual != null; i++, atual = atual.proximo) {
+            if (retirar[i]) {
+                if (anterior == null) {
+                    cabeca = atual.proximo;
+                } else {
+                    anterior.proximo = atual.proximo;
+                }
+                tamanho--;
+            } else {
+                anterior = atual;
+            }
+        }
+    }
+
     /**
      * Retorna o tamanho atual da lista.
      * Equivalente C: l->tamanho

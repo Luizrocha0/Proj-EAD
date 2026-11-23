@@ -470,14 +470,16 @@ curl http://localhost:8080/api/estoque
 
 ---
 
-### Fila FIFO de Requisições Hospitalares (`/api/requisicoes` — AED U1)
+### Fila e atendimento hospitalar (`/api/requisicoes`)
 
 | Método | Endpoint | Descrição | Status de Sucesso |
 |---|---|---|:---:|
 | `POST` | `/api/requisicoes` | Enfileira requisição emergencial | `200 OK` |
-| `POST` | `/api/requisicoes/atender` | Desenfileira e atende a próxima requisição (FIFO) | `200 OK` |
+| `POST` | `/api/requisicoes/atender` | Recebe pedido e percurso. Aloca bolsas compatíveis em FEFO, confirma a baixa e retorna a rota. | `200 OK` |
 | `GET` | `/api/requisicoes/proxima` | Consulta a próxima requisição sem remover (peek) | `200 OK` |
 | `GET` | `/api/requisicoes` | Lista todas as requisições pendentes na fila | `200 OK` |
+
+Execute o atendimento e compare os algoritmos em C e Java. [AED Unidade 2](docs/equivalencia-u2.md)
 
 ---
 

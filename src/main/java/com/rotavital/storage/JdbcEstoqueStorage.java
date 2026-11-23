@@ -1,6 +1,9 @@
 package com.rotavital.storage;
 
+import com.rotavital.aed.u2.AlocacaoFefo;
 import com.rotavital.domain.Bolsa;
+import com.rotavital.domain.ConflitoAtendimentoException;
+import com.rotavital.domain.TipoSanguineo;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -8,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,6 +75,34 @@ public class JdbcEstoqueStorage implements EstoqueStorage {
             """;
         int linhasAfetadas = jdbcTemplate.update(sql, id.trim());
         return linhasAfetadas > 0;
+    }
+
+    @Override
+    @Transactional
+    public List<Bolsa> alocar(TipoSanguineo receptor, int quantidade, LocalDate referencia) {
+        String sql = """
+            SELECT id_seq, id, tipo_sanguineo, volume_ml, data_coleta, validade, doador
+            FROM bolsas
+            ORDER BY id_seq DESC
+            """;
+        List<Ocorrencia> estoque = jdbcTemplate.query(sql,
+                (rs, numero) -> new Ocorrencia(rs.getLong("id_seq"), bolsaRowMapper.mapRow(rs, numero)));
+        Bolsa[] bolsas = estoque.stream().map(Ocorrencia::bolsa).toArray(Bolsa[]::new);
+        List<Integer> selecionadas = AlocacaoFefo.selecionar(bolsas, receptor, quantidade, referencia);
+
+        var alocadas = new ArrayList<Bolsa>(selecionadas.size());
+        for (int posicao : selecionadas) {
+            Ocorrencia ocorrencia = estoque.get(posicao);
+            // A ordem FEFO é comum às transações. id_seq distingue IDs públicos repetidos.
+            if (jdbcTemplate.update("DELETE FROM bolsas WHERE id_seq = ?", ocorrencia.idSeq()) != 1) {
+                throw new ConflitoAtendimentoException("O estoque mudou durante a alocação. Tente novamente");
+            }
+            alocadas.add(ocorrencia.bolsa());
+        }
+        return List.copyOf(alocadas);
+    }
+
+    private record Ocorrencia(long idSeq, Bolsa bolsa) {
     }
 
     @Override

@@ -1,10 +1,12 @@
 package com.rotavital.service;
 
 import com.rotavital.domain.Bolsa;
+import com.rotavital.domain.TipoSanguineo;
 import com.rotavital.storage.EstoqueStorage;
 import com.rotavital.storage.ListaEstoqueStorage;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -70,6 +72,10 @@ public class EstoqueService {
      */
     public boolean removerBolsa(String id) {
         return remover(id);
+    }
+
+    public List<Bolsa> alocar(TipoSanguineo receptor, int quantidade, LocalDate referencia) {
+        return storage.alocar(receptor, quantidade, referencia);
     }
 
     /**
