@@ -26,6 +26,9 @@ public class Bolsa {
         this.volumeMl = volumeMl;
         this.dataColeta = Objects.requireNonNull(dataColeta, "dataColeta não pode ser nula");
         this.validade = Objects.requireNonNull(validade, "validade não pode ser nula");
+        if (validade.isBefore(dataColeta)) {
+            throw new IllegalArgumentException("validade não pode ser anterior à data de coleta");
+        }
         this.doador = Objects.requireNonNull(doador, "doador não pode ser nulo");
     }
 
