@@ -13,5 +13,5 @@ Funcionalidade: Confirmar baixa integral para o próximo pedido
     Quando outra ocorrência O- válida até 25/11/2026 é registrada
     E a pessoa operadora tenta atender REQ-BDD-01 novamente
     Então a API confirma exatamente duas bolsas em ordem FEFO
-    E retira REQ-005 da fila
+    E retira REQ-BDD-01 da fila
     E preserva a ocorrência vencida e a incompatível
