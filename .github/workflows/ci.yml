@@ -2,7 +2,7 @@ name: CI — Rota Vital
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'fix/**', 'infra/**', 'entrega/**', 'etapa/**', 'release/**', 'u2-parte-2-ddd-arquitetura']
+    branches: ['**']
   pull_request:
     branches: [main]
 
@@ -100,7 +100,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Executar testes de integração com PostgreSQL Real via Testcontainers
+      - name: Executar integrações e cenário Cucumber com PostgreSQL real
         run: |
           sed -i 's/\r$//' mvnw
           chmod +x mvnw
@@ -115,6 +115,7 @@ jobs:
             target/failsafe-reports/
             target/surefire-reports/
             target/site/jacoco/
+            target/cucumber/
           retention-days: 7
 
   # ─────────────────────────────────────────────
@@ -250,6 +251,7 @@ jobs:
     needs: [check-benchmark, test-c, test-java-unit, test-java-integration, build-docker-smoke]
     if: github.ref == 'refs/heads/main'
     environment: production
+    concurrency: deploy-render-production
 
     steps:
       - name: Triggar deploy no Render com commit SHA validado
@@ -266,35 +268,26 @@ jobs:
           else
             HOOK_URL="${RENDER_DEPLOY_HOOK_URL}?ref=${{ github.sha }}"
           fi
-          DEPLOY_RESP=$(curl -sS --fail -X POST "$HOOK_URL")
-          echo "Resposta do Render Deploy Hook: $DEPLOY_RESP"
+          curl --silent --show-error --fail --max-time 30 -o /dev/null -X POST "$HOOK_URL"
           echo "✅ Deploy disparado no Render para o commit ${{ github.sha }}"
 
-      - name: Aguardar e verificar URL pública
+      - name: Confirmar a revisão publicada e a saúde da API
+        timeout-minutes: 25
+        shell: bash
         env:
           RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
         run: |
           APP_URL=$(echo "${RENDER_APP_URL:-https://rota-vital.onrender.com}" | tr -d '[:space:]')
           APP_URL="${APP_URL%/}"
-          echo "Aguardando Render atualizar a instância (limite de 5 minutos)..."
-          MAX_RETRIES=30
-          INTERVAL=10
-          for i in $(seq 1 $MAX_RETRIES); do
-            RESP=$(curl -s -w "\n%{http_code}" "$APP_URL/actuator/health" 2>/dev/null || printf "\n000")
-            STATUS=$(printf "%s" "$RESP" | tail -n1)
-            HEALTH_RESP=$(printf "%s" "$RESP" | sed '$d')
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Aplicação em produção respondendo (HTTP 200) — $APP_URL"
-              echo "Detalhes do Actuator Health: $HEALTH_RESP"
-              if echo "$HEALTH_RESP" | grep -q '"db"'; then
-                echo "✅ Componente PostgreSQL ('db') ativo e saudável em produção!"
-              else
-                echo "ℹ️  Nota: Componente 'db' ainda não detectado (aguardando provisionamento de rotavital-db via blueprint pelo mantenedor)."
-              fi
+          until (( SECONDS >= 1380 )); do
+            if curl -fsS --max-time 15 "$APP_URL/actuator/info" |
+                 jq -es --arg sha "$GITHUB_SHA" 'length == 1 and .[0].app.commit == $sha' >/dev/null &&
+               curl -fsS --max-time 15 "$APP_URL/actuator/health" |
+                 jq -es 'length == 1 and .[0].status == "UP"' >/dev/null; then
+              echo "Render confirmou a revisão $GITHUB_SHA com saúde UP."
               exit 0
             fi
-            echo "Tentativa $i falhou (status $STATUS). Aguardando $INTERVAL segundos..."
-            sleep $INTERVAL
+            sleep 15
           done
-          echo "❌ Tempo limite excedido. Aplicação não respondeu com status 200."
+          echo "::error::O Render não confirmou a revisão e a saúde esperadas."
           exit 1
