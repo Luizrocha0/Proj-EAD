@@ -27,6 +27,7 @@
 
 ## 📋 Índice
 
+- [Arquitetura da Parte 3](#arquitetura)
 - [1. Visão Geral e Transição Pedagógica (U1 → U2)](#1-visão-geral-e-transição-pedagógica-u1-u2)
 - [2. Como Rodar](#2-como-rodar)
   - [Pré-requisitos](#pré-requisitos)
@@ -44,7 +45,7 @@
   - [Procedimento Operacional de Rollback em 3 Vias](#procedimento-operacional-de-rollback-em-3-vias)
   - [Governança de Migrações com Flyway (Expand / Contract)](#governança-de-migrações-com-flyway-expand-contract)
 - [5. Tabela das 12 Decisões Arquiteturais Justificadas](#5-tabela-das-12-decisões-arquiteturais-justificadas)
-- [6. Declaração Transparente de Uso de IA](#6-declaração-transparente-de-uso-de-ia)
+- [Uso de IA](#uso-de-ia)
 - [7. Catálogo de Endpoints REST](#7-catálogo-de-endpoints-rest)
 - [8. Benchmark de Paralelismo e Medições de SO (U1)](#8-benchmark-de-paralelismo-e-medições-de-so-u1)
 - [9. Estrutura Completa do Repositório](#9-estrutura-completa-do-repositório)
@@ -76,6 +77,41 @@ O atendimento preserva FIFO, FEFO e a roteirização da AED. Os quatro contextos
 [Planejamento da remodelagem](docs/arquitetura/u2-parte-2/planejamento.md) · [Orçamento](docs/arquitetura/u2-parte-2/orcamento-render.xlsx)
 
 O comando `./mvnw -Pintegration verify` mede cobertura Java com PostgreSQL real. Consulte `target/site/jacoco/index.html` após a execução.
+
+## Arquitetura
+
+O Rota Vital é um monólito modular. Cada contexto reúne apresentação HTTP, negócio e dados. O negócio separa domínio e casos de uso. Spring conecta as portas aos adaptadores em `CasosDeUsoConfig`.
+
+| Contexto | Apresentação | Negócio | Dados |
+| --- | --- | --- | --- |
+| [Estoque](src/main/java/com/rotavital/estoque) | `EstoqueController` | `EstoqueService` registra bolsas e confirma lotes integrais. | `JdbcEstoqueStorage` acessa a tabela `bolsas`. |
+| [Requisições](src/main/java/com/rotavital/requisicoes) | `RequisicaoController` | `RequisicaoService` coordena a fila FIFO de pedidos. | `FilaJdbc` acessa a tabela `requisicoes`. |
+| [Expedição](src/main/java/com/rotavital/expedicao) | `AtendimentoController` | `AtenderRequisicao` calcula a rota e emite `GuiaDeSaida`. | `AdaptadorEstoque` traduz o lote em itens da guia. |
+| [Comparação Textual](src/main/java/com/rotavital/comparacaotextual) | `DuplicateController` | `DetectarPares` compara textos pela distância de Levenshtein. | `DataGeneratorService` fornece amostras sintéticas. |
+
+A raiz do agregado de Estoque é `LoteDeBaixa`. Somente `confirmar` cria o lote imutável. A raiz exige quantidade integral, chaves distintas, compatibilidade e validade. A seleção FEFO prioriza as bolsas que vencem primeiro. IDs públicos repetidos distinguem-se pela chave da ocorrência. [Agregado e objetos de valor](src/main/java/com/rotavital/estoque/negocio/dominio)
+
+`PedidoDeBaixa` reúne receptor, quantidade e data de referência. `TipoSanguineo` pertence ao núcleo compartilhado. Na Parte 3, `Validade` passou a reunir coleta e vencimento. Seu construtor rejeita vencimento anterior à coleta. O último dia continua válido para atendimento.
+
+A Expedição chama serviços públicos de Requisições e Estoque. No perfil `infra`, fila e baixa compartilham uma transação PostgreSQL. Cada adaptador JDBC opera somente sua própria tabela. O perfil `u1` usa fila e estoque em memória. [Mapa, decisões e planejamento](docs/arquitetura/)
+
+### Testes da entrega
+
+Execute os comandos na raiz com Java 21. Integração e Cucumber exigem Docker. No PowerShell, substitua `./mvnw` por `.\mvnw.cmd`.
+
+| Verificação | Comando |
+| --- | --- |
+| Agregado e objetos de valor, sem Spring ou banco | `./mvnw "-Dtest=LoteDeBaixaTest,ObjetosDeValorTest,ValidadeDaBolsaTest" test` |
+| Apenas o cenário da Parte 2, com PostgreSQL 16 | `./mvnw test-compile failsafe:integration-test failsafe:verify -Dit.test=AtendimentoCucumberIT` |
+| Suíte completa e cobertura JaCoCo | `./mvnw -Pintegration verify` |
+
+O Cucumber lê diretamente o [cenário da Parte 2](docs/arquitetura/u2-parte-2/atendimento-integral.feature). Os passos exercitam a API com Spring e PostgreSQL descartável. O primeiro atendimento deve retornar 409, preservando fila e estoque. Após a reposição, a guia confirma duas bolsas em ordem FEFO. O teste consulta novamente a fila e o saldo. O relatório fica em `target/cucumber/atendimento.json`.
+
+O histórico registra o [teste vermelho](https://github.com/Luizrocha0/Proj-EAD/commit/ca06ea4), a [correção mínima](https://github.com/Luizrocha0/Proj-EAD/commit/1db3448) e a [extração de Validade](https://github.com/Luizrocha0/Proj-EAD/commit/4932882).
+
+### Deploy da Parte 1
+
+Cada push em uma branch executa os testes. Somente a `main` aprovada pelos cinco jobs aciona o Render. O teste de fumaça aguarda a revisão exata do GitHub em `/actuator/info` e a saúde `UP` em `/actuator/health`. [Revisão em produção](https://rota-vital.onrender.com/actuator/info) · [Saúde](https://rota-vital.onrender.com/actuator/health) · [Execuções da esteira](https://github.com/Luizrocha0/Proj-EAD/actions/workflows/ci.yml)
 
 ---
 
@@ -241,7 +277,7 @@ Executa exclusivamente classes `**/*Test.java` sem subir contêineres nem banco 
 $env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
 .\mvnw.cmd test
 ```
-*Resultado: **201 testes aprovados** (0 falhas, 0 erros, tempo ~23s).*
+O Surefire registra contagens e falhas em `target/surefire-reports/`.
 
 #### 2. Testes de Integração e Aceitação (Níveis 2 e 3 — Failsafe + Testcontainers):
 Executa classes `**/*IT.java` instanciando automaticamente um contêiner PostgreSQL 16 via Testcontainers.
@@ -251,7 +287,7 @@ Executa classes `**/*IT.java` instanciando automaticamente um contêiner Postgre
 $env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
 .\mvnw.cmd -Pintegration verify
 ```
-*Resultado: **39 métodos de teste aprovados** em 3 classes IT (`JdbcEstoqueStorageIT`, `BolsaPersistidaIT`, `EstoqueControllerIT`).*
+O Failsafe registra integrações e aceitação em `target/failsafe-reports/`.
 
 #### 3. Testes das Estruturas AED em C (U1 — AddressSanitizer + UBSan):
 Compila e executa as 54 asserções em C com sanitizers de memória do GCC.
@@ -281,6 +317,7 @@ python bench/plot_speedup.py --check
 - **Relatórios de Testes:**
   - Relatórios Surefire: `target/surefire-reports/`
   - Relatórios Failsafe: `target/failsafe-reports/`
+  - Passos do Cucumber: `target/cucumber/atendimento.json`
 - **Limitações Técnicas Observadas:**
   - **Sanitizers no Windows:** A distribuição padrão MinGW do Windows não empacota a biblioteca `libasan`. Para compilar com `-fsanitize=address,undefined`, utilize Linux nativo, contêiner Docker ou WSL.
   - **Script de Benchmark (`bench/measure.ps1`):** Não deve ser executado em rotinas normais de teste ou auditoria, pois realiza coletas ativas contra `localhost:8080` que regravam os CSVs históricos de 40 medições da U1.
@@ -323,7 +360,7 @@ O workflow em `.github/workflows/ci.yml` estrutura a validação em um Grafo Ac�
 1. **Gate 1 (`check-benchmark`):** Executa testes Python e checa consistência das medições da U1.
 2. **Gate 2 (`test-c`):** Compila e executa estruturas C com GCC, AddressSanitizer e UndefinedBehaviorSanitizer.
 3. **Gate 3 (`test-java-unit`):** Roda os 201 testes unitários Java rápidos via Surefire.
-4. **Gate 4 (`test-java-integration`):** Executa os testes de integração com banco PostgreSQL via Testcontainers.
+4. **Gate 4 (`test-java-integration`):** Executa integrações e o cenário Cucumber com PostgreSQL real.
 5. **Gate 5 (`build-docker-smoke`):** Constrói a imagem Docker (testando no build), sobe o Compose localmente, aguarda saúde de API e banco, e executa smoke test funcional de ponta a ponta com 9 asserções REST completas (cadastro, consulta, listagem LIFO, remoção, 404 e 400).
 6. **Gate 6 (`deploy-render`):** Dispara o deploy hook no Render com o commit SHA aprovado.
 
@@ -406,7 +443,11 @@ A tabela abaixo registra formalmente as 12 decisões técnicas fundamentais toma
 
 ---
 
-## 6. Declaração Transparente de Uso de IA
+## Uso de IA
+
+**Parte 3 · PO-CESAR-021, categoria Condicionado.** OpenAI Codex auxiliou na extração de `Validade`, nos passos Cucumber, na configuração da esteira e neste README. A validação usa testes puros do domínio, o cenário com PostgreSQL real e a conferência da revisão publicada. Os relatórios Surefire, Failsafe, Cucumber e JaCoCo ficam nos artefatos da esteira.
+
+### Etapas anteriores
 
 Em estrito cumprimento às diretrizes acadêmicas do professor e aos princípios éticos de transparência e integridade de software:
 
@@ -568,6 +609,7 @@ rota-vital/
 │       └── V2__criar_fila_de_requisicoes.sql # Fila FIFO persistente
 ├── src/test/java/com/rotavital/
 │   ├── aed/, arquitetura/, controller/ # Estruturas, camadas e contratos HTTP
+│   ├── bdd/                         # Cenário Cucumber com Spring e PostgreSQL
 │   ├── estoque/, expedicao/          # Invariantes dos modelos
 │   └── integration/                  # Suítes Nível 2 e 3 (Failsafe + Testcontainers)
 │       ├── AbstractPostgresIT.java   # Contêiner singleton PostgreSQL 16

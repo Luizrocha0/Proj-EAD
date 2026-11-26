@@ -62,10 +62,6 @@ public record BolsaRequestDTO(
         }
         LocalDate validadeParsed = LocalDate.parse(validadeLimpa);
 
-        if (validadeParsed.isBefore(dataColetaParsed)) {
-            throw new IllegalArgumentException("validade não pode ser anterior à data de coleta");
-        }
-
         Objects.requireNonNull(doador, "doador não pode ser nulo");
         String doadorLimpo = doador.trim();
         if (doadorLimpo.isEmpty()) {

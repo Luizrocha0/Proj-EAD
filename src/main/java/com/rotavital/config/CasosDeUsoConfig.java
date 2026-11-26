@@ -27,8 +27,13 @@ public class CasosDeUsoConfig {
     }
 
     @Bean
-    AtenderRequisicao atenderRequisicao(RequisicaoService requisicoes, BaixaParaExpedicao estoque) {
-        return new AtenderRequisicao(requisicoes, estoque, Clock.systemDefaultZone());
+    Clock relogio() {
+        return Clock.systemDefaultZone();
+    }
+
+    @Bean
+    AtenderRequisicao atenderRequisicao(RequisicaoService requisicoes, BaixaParaExpedicao estoque, Clock relogio) {
+        return new AtenderRequisicao(requisicoes, estoque, relogio);
     }
 
     @Bean
